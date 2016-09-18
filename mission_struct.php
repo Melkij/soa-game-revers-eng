@@ -15,7 +15,7 @@ class binaryFile
     public function __construct($filename)
     {
         $this->file = file_get_contents($filename);
-        $this->filesize = mb_strlen($this->file, 'binary');
+        $this->fileSize = mb_strlen($this->file, 'binary');
     }
 
     private function binhex($input, $sep = ' ') {
@@ -43,6 +43,13 @@ class binaryFile
         return $bytes;
     }
 
+    /**
+     * testcase: 99 99 19 3f ~ 0,6
+     */
+    public function float()
+    {
+        return current(unpack('f', $this->readbyte(4)));
+    }
     public function int32()
     {
         return current(unpack('V', $this->readbyte(4)));
@@ -59,7 +66,7 @@ class binaryFile
 
     public function unknownblock($len)
     {
-        //echo 'notice: unknown block ' . $this->position .' '. $len .' bytes',PHP_EOL;
+        echo 'notice: unknown block ' . $this->position .' '. $len .' bytes',PHP_EOL;
         //echo $this->hexahead($len).PHP_EOL.PHP_EOL;
         $this->position += $len;
     }
@@ -75,9 +82,21 @@ class binaryFile
             throw new LogicException('readed block ' . $infile. ' not match need ' . $equals);
         }
     }
+
+    public function assertEof()
+    {
+        if ($this->position !== $this->fileSize) {
+            throw new \LogicException('not EOF!');
+        }
+    }
 }
 
-$file = new binaryFile('testmis/empty_5x5.mis');
+$file = new binaryFile('testmis/empty_5x5_unit2c3.mis');
+$file = new binaryFile('testmis/buildx1.mis');
+//$file = new binaryFile('testmis/f15x1.mis');
+//$file = new binaryFile('testmis/empty_5x5_unit2c3x3_armored.mis');
+$file = new binaryFile('testmis/testeditorcam_base.mis');
+$file = new binaryFile('testmis/testeditorcam_position_up.mis');
 $file->assertEqualHex('38 f9 b3 0a 62 93 d1 11 9a 2b 08 00 00 30 05 12 0a 00 00 00 02 00 00 00 0a 00 00 00');
 $titleLenght = $file->int8();
 $title = $file->utf8Text($titleLenght);
@@ -128,22 +147,27 @@ while($entrysize = $file->int32()) {
 $file->assertEqualHex('02 00 00 00 00 00 00 00');
 $landId = $file->int32();
 $file->assertEqualHex('ff ff ff ff 03 00 00 00');
-$unknownmarker = $file->hexahead(24);
-$file->unknownblock(24);
-$file->unknownblock(8);
-//$file->assertEqualHex('00 00 00 00 00 00 00 00 34 cd 9f 42 f4 04 35 3f f4 04 35 3f fe 04 35 bf');
-//$file->assertEqualHex('4e 61 3c 4b 00 00 a0 41');
-$file->assertEqualHex($unknownmarker); // маркер повторяется
+$editorCam = $file->hexahead(24);
+// где находится камера
+$editorCamPosWestEast = $file->float(); // при движении на запад уменьшается, скорей всего 0 - крайняя западная точка
+$editorCamPosNorthSouth = $file->float(); // 0 в крайнем севере
+$editorCamPosHeight = $file->float(); // 0 уровень моря, чем больше 0 - тем выше
+// куда камера развёрнута
+$editorCamViewDirectionX = $file->float(); // явно координаты взгляда, мог напутать x и y
+$editorCamViewDirectionY = $file->float();
+$editorCamViewDirectionZ = $file->float(); // но это точно z
+$file->unknownblock(8); // неизвестный промежуточный блок
+$file->assertEqualHex($editorCam); // затем блок данных о камере продублирован
 $file->assertEqualHex('00 00 00 00 00 00 00 00');
-$file->unknownblock(4);
+$minimapsize = $file->float(); // множитель масштаба. Дефолт 00 00 80 3F (т.е. 1), число меньше - карта ближе, больше - дальше
 $file->assertEqualHex('05 00 00 00');
 $skies = $file->int32();
 $file->assertEqualHex('00 00 00 00');
-$file->unknownblock(4); // possible, rain
-$file->assertEqualHex('00 00');
-$file->unknownblock(1); // possible, temp
-$file->assertEqualHex('41 00 00 00 00 00 0c 00 00 00');
-$file->unknownblock(4); // possible, time
+$rainPercent = $file->float();
+$temperature = $file->float();
+$file->assertEqualHex('00 00 00 00 00 0c 00 00');
+$file->assertEqualHex('00');
+$file->unknownblock(4); // скорей всего здесь игровое время +- возможное смещение на 1 байт. 3 байта точно меняются
 $file->assertEqualHex('02 00 00 00');
 
 assertEquals($partyCount, $file->int8());
@@ -164,8 +188,77 @@ $file->assertEqualHex('63 00 00 00');
 
 // физические объекты на карте, в том числе транспорт
 $objectsCount = $file->int32();
-for ($objectId = 0; $objectId < $objectsCount; ++$objectId) {
-    throw new LogicException('unit undefined binary length for each');
+//echo $file->hexahead(2000000),PHP_EOL;
+$unitInnerStructId = 0;
+for ($objectStructCounter = 0; $objectStructCounter < $objectsCount; ++$objectStructCounter) {
+    $objectTypeId = $file->int32();
+    $objectUid = $file->int32(4); // какое-то числительное int32
+    $file->unknownblock(8); // may be, position?
+    $file->unknownblock(4); // 00 00 00 80 для юнитов, 00 00 00 00 для сооружений?
+    $file->unknownblock(4); // угол поворота?
+    $file->assertEqualHex('00 00 80 3f 01 01 00 00 00 00 16 00 00 00 00 00 00 00 00');
+    $file->unknownblock(4); // тоже поменялось с углом поворота
+    assertEquals($file->int32(), $file->int32()); // две непонятные пары повторяющихся совершенно идентичных 4 байт,
+    assertEquals($file->int32(), $file->int32()); // идентичны для нескольких одинаковый объектов, различны для разных объектов
+    $file->assertEqualHex('ff ff ff ff 00 00 00 00 00 00 00 00 00 00 80 3f 00 00 00 00 00 00 ff ff ff ff ff ff ff ff ff ff ff ff');
+    $nameLen = $file->int8();
+    $name = $file->utf8Text($nameLen);
+    $file->assertEqualHex('ff ff ff ff 00 00 00 00 00 00 00 00');
+    switch ($file->hexahead(8)) {
+        case '00 00 00 00 00 00 00 00':
+            // постройка?
+            $file->assertEqualHex('00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00');
+            break;
+        case 'ff ff ff ff ff ff ff ff':
+            // юнит?
+            $file->assertEqualHex('ff ff ff ff ff ff ff ff 00 00 00 00 00 00 00 00 00 01 40 42 0f 00 00 00 00 00');
+            $targetStructCount = $file->int32();
+            $repeatableUnknownBlock1 = null;
+            for ($structCounter = 0; $structCounter < $targetStructCount; ++$structCounter) {
+                if (is_null($repeatableUnknownBlock1)) {
+                    $repeatableUnknownBlock1 = $file->int32();
+                } else {
+                    assertEquals($repeatableUnknownBlock1, $file->int32());
+                }
+                $file->unknownblock(4); // различается иногда
+                assertEquals($unitInnerStructId, $file->int32());
+                $file->assertEqualHex('00');
+                $file->unknownblock(4); // различается иногда
+                $file->assertEqualHex('01 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 f4 01 00 00');
+                $file->unknownblock(12);
+                $file->assertEqualHex('00 00 00 00');
+                $file->unknownblock(8);
+                $file->assertEqualHex('00 00 00 00 00 00 00 00 00');
+                assertEquals($objectUid, $file->int32()); // зачем-то повторяется аж сразу 2 раза
+                assertEquals($objectUid, $file->int32());
+                $file->assertEqualHex('ff ff ff ff');
+                $objectName = $file->utf8Text($file->int8()); // TRES_OBJECTS_UNIT_*
+                $file->unknownblock(4);
+
+                ++$unitInnerStructId;
+            }
+            // todo: посмотреть в другие юниты. f15 и 2c3 различаются не только данными, но и длиной записи
+            $file->assertEqualHex('00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 ff 00 ff 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00');
+            $file->unknownblock(1);
+            $file->assertEqualHex('00 00 00 00 00 00 00 00 00 1e 00 00 00');
+            $unknownLength = $file->int32();
+            for ($i = 0; $i < $unknownLength; ++$i) {
+                $file->assertEqualHex('00 00 00 00');
+            }
+            $file->assertEqualHex('02 00 00 00 00 00 00 00 80 bf 00 00 80 bf 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00');
+            $file->unknownblock(1);
+            $file->assertEqualHex('00 00 80 bf 00 00 80 bf');
+            $file->unknownblock(24);
+            $file->assertEqualHex('00 00 00 00 00');
+            $file->unknownblock(2);
+            $file->assertEqualHex('00 00 00');
+            $file->unknownblock(20);
+            $file->assertEqualHex('00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00');
+            $file->assertEqualHex('00 00 00 00 00 00 00 00 00 00 00 80 3f 00 00 00 00 00 00');
+            break;
+        default:
+            throw new \LogicException('unknown bytea '.$file->hexahead(8));
+    }
 }
 
 $ending = str_replace(PHP_EOL, ' ', '01 00 00 00 00 00 00 00
@@ -175,5 +268,6 @@ $ending = str_replace(PHP_EOL, ' ', '01 00 00 00 00 00 00 00
 00 00 00 00
 00 00 00 00');
 $file->assertEqualHex($ending);
+$file->assertEof();
 
 echo 'read complete',PHP_EOL;
