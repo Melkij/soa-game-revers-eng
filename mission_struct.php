@@ -106,7 +106,7 @@ $file = new binaryFile('testmis/building_baraks1-7.mis');
 //$file = new binaryFile('testmis/btr80x3_arm_gasgranate.mis');
 //$file = new binaryFile('testmis/empty_5x5_unit2c3x3_armored.mis');
 //$file = new binaryFile('testmis/empty_5x5_unit2c3x3_armored.mis');
-$file = new binaryFile('testmis/playerx5_3human.mis');
+$file = new binaryFile('testmis/scriptx3_mission_start.mis');
 $file->assertEqualHex('38 f9 b3 0a 62 93 d1 11 9a 2b 08 00 00 30 05 12 0a 00 00 00 02 00 00 00 0a 00 00 00');
 $titleLenght = $file->int8();
 $title = $file->utf8Text($titleLenght);
@@ -169,7 +169,15 @@ while($entrysize = $file->int32()) {
 while($entrysize = $file->int32()) {
     $file->unknownblock($entrysize);
 }
-$file->assertEqualHex('02 00 00 00 00 00 00 00');
+$file->assertEqualHex('02 00 00 00');
+$texturesCount = $file->int32();
+for ($i = 0; $i < $texturesCount; ++$i) {
+    $pos1 = $file->float();
+    $pos2 = $file->float();
+    $size1 = $file->float();
+    $size2 = $file->float();
+    $file->assertEqualHex('00 00 00 00 ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff 2d 00 00 00 00 00 00 00');
+}
 $landId = $file->int32();
 $file->assertEqualHex('ff ff ff ff 03 00 00 00');
 $editorCam = $file->hexahead(24);
@@ -337,13 +345,45 @@ if (is_null($objInSlotType)) {
     }
 }
 
-$ending = str_replace(PHP_EOL, ' ', '01 00 00 00 00 00 00 00
-02 00 00 00 00 00 00 00 00 00 00 00
-24 00 00 00 00 00 00 00 00 00 00 00 01 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
-64 00 00 00 00 00 00 00 02 00 00 00 00 00 00 00 07 00 00 00 00 00 00 00 00 00 00 00 02 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 01 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 01 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
-00 00 00 00
-00 00 00 00');
-$file->assertEqualHex($ending);
+$file->assertEqualHex('01 00 00 00 00 00 00 00 02 00 00 00 00 00 00 00 00 00 00 00 24 00 00 00');
+$scriptsCount = $file->int32();
+$strangeBlock = '00 00 00 00';
+if ($scriptsCount) {
+    $strangeBlock = '01 00 00 00';
+    for ($i = 1; $i <= $scriptsCount; ++$i) {
+        $file->assertEqualHex('d0 07 00 00');
+        assertEquals($i, $file->int32());
+    }
+    for ($i = 0; $i < $scriptsCount; ++$i) {
+        $file->assertEqualHex('00');
+    }
+    $blockCount = $file->int32();
+    assertEquals($scriptsCount*2, $blockCount);
+    for ($i = 0; $i < $blockCount; ++$i) {
+        $file->unknownblock(9);
+    }
+    $file->assertEqualHex('00 00 00 00 01 00 00 00 01 00 00 00 01 00 00 00');
+    $file->unknownblock(24 + 36 * ($scriptsCount-1));
+    $nameBlockCount = $file->int32();
+    for ($i = 0; $i < $nameBlockCount; ++$i) {
+        $file->assertEqualHex('01 00 00 00');
+        $file->unknownblock(4);
+        $file->assertEqualHex('01 00 00 00 d0 07 00 00 01 00 00 00 00 00 00 00');
+        $nameLen = $file->int8();
+        $scriptName = $file->utf8Text($nameLen);
+    }
+    $unknownBlockLen = $file->int32();
+    for ($i = 0; $i < $unknownBlockLen; ++$i) {
+        $file->unknownblock(20);
+    }
+} else {
+    $file->assertEqualHex('00 00 00 00 01 00 00 00 00 00 00 00 00 00 00 00');
+}
+$file->assertEqualHex('00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00');
+$file->assertEqualHex('64 00 00 00 00 00 00 00 02 00 00 00 00 00 00 00 07 00 00 00');
+$file->assertEqualHex($strangeBlock);
+$file->assertEqualHex('00 00 00 00 02 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 01 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 01 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00');
+
 $file->assertEof();
 
 echo 'read complete',PHP_EOL;
