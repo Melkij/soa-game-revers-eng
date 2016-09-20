@@ -255,7 +255,7 @@ function testread($filename) {
     $unitInnerStructId = 0;
     for ($objectStructCounter = 0; $objectStructCounter < $objectsCount; ++$objectStructCounter) {
         $objectTypeId = $file->int32();
-        $objectUid = $file->int32(4); // какое-то числительное int32, по-видимому на него ссылаются дальше
+        $objectUid = $file->int32(); // какое-то числительное int32, по-видимому на него ссылаются дальше
         $position1 = $file->float();
         $position2 = $file->float();
         $maybeTypeBlock = $file->hexahead(4);
@@ -283,7 +283,12 @@ function testread($filename) {
                 // что-то не так со всеми 3 самолётами, после них ещё 5 байт нулей потеряшек
                 // байк, 2c3, btr80 парсятся
     echo 'Unit type '.$objectTypeId.PHP_EOL;
-                assertEquals('00 00 00 80', $maybeTypeBlock);
+                if (! in_array($maybeTypeBlock, [
+                    '00 00 00 80', // машина
+                    '00 00 00 00', // вертушка
+                    ])) {
+                    throw new LogicException('unknown '.$maybeTypeBlock);
+                }
                 $file->assertEqualHex('ff ff ff ff ff ff ff ff 00 00 00 00 00 00 00 00 00 01 40 42 0f 00 00 00 00 00');
                 $weaponsCount = $file->int32();
     echo 'weapons count: '.$weaponsCount.PHP_EOL;
@@ -297,7 +302,12 @@ function testread($filename) {
                     $file->unknownblock(12);
                     $file->assertEqualHex('00 00 00 00');
                     $file->unknownblock(8);
-                    $file->assertEqualHex('00 00 00 00 00 00 00 00 00');
+                    $nextBytesCount = $file->int32();
+                    if ($nextBytesCount) {
+                        // похоже, это заряженные снаряды в вертушках
+                        $file->unknownblock(($nextBytesCount+1) * 4);
+                    }
+                    $file->assertEqualHex('00 00 00 00 00');
                     assertEquals($objectUid, $file->int32()); // зачем-то повторяется аж сразу 2 раза
                     assertEquals($objectUid, $file->int32());
                     $file->assertEqualHex('ff ff ff ff');
@@ -355,10 +365,22 @@ function testread($filename) {
                 $file->unknownblock(2);
                 $file->assertEqualHex('00 00 00');
                 $file->unknownblock(20);
-                $file->assertEqualHex('00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00');
-                $file->assertEqualHex('00 00 00 00 00 00 00 00 00 00 00 80 3f 00 00 00 00 00 00');
+                $file->unknownblock(1);
+                $file->assertEqualHex('00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00');
+                $file->assertEqualHex('00 00 00 00');
+                $selectableWeaponsCount = $file->int8();
+                for ($i = 0; $i < $selectableWeaponsCount; ++$i) {
+                    $file->unknownblock(8);
+                    //$file->assertEqualHex('00 00 00 00 00 00 00 00'); // встречается у хаммеров и вертушек при добавлении навесного оружия
+                }
+                $file->assertEqualHex('00 00 00 00 00 00 80 3f 00 00 00 00 00 00');
                 if (in_array($objectTypeId, [2, 10, 22])) {
                     $file->assertEqualHex('00 00 00 00 00');
+                }
+                if ($maybeTypeBlock === '00 00 00 00') {
+                    $file->assertEqualHex('00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 f0 55 00 00 0a d7 23 3c 40 08 f4 34 00 00 00 00 01 00');
+                    $file->unknownblock(13);
+                    $file->assertEqualHex('00 00 80 3f f0 55 00 00 0a d7 23 3c 40 08 f4 34 00 00 00 00 00 00 00 00 00 00 40 42 0f 00 00 00 00 00 00 00 00 80 40 00 00 00 00');
                 }
                 break;
             case '00 00 00 00 ff ff ff ff':
