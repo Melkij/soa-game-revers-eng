@@ -199,7 +199,8 @@ function testread($filename) {
     $file->assertEqualHex('00 00 00 00');
     $rainPercent = $file->float();
     $temperature = $file->float();
-    $file->assertEqualHex('00 00 00 00 00 0c 00 00');
+    $file->unknownblock(1);
+    $file->assertEqualHex('00 00 00 00 0c 00 00');
     $file->assertEqualHex('00');
     $file->unknownblock(4); // скорей всего здесь игровое время +- возможное смещение на 1 байт. 3 байта точно меняются
     $file->assertEqualHex('02 00 00 00');
@@ -267,8 +268,8 @@ function testread($filename) {
         assertEquals($file->int32(), $file->int32()); // две непонятные пары повторяющихся совершенно идентичных 4 байт,
         assertEquals($file->int32(), $file->int32()); // идентичны для нескольких одинаковый объектов, различны для разных объектов
         $file->assertEqualHex('ff ff ff ff 00 00 00 00');
-        $file->unknownblock(1); // добавили коров, поплыл байтик
-        $file->assertEqualHex('00 00 00 00 00 80 3f 00 00 00 00 00 00 ff ff ff ff ff ff ff ff ff ff ff ff');
+        $file->unknownblock(4); // добавили коров, поплыл байтик
+        $file->assertEqualHex('00 00 80 3f 00 00 00 00 00 00 ff ff ff ff ff ff ff ff ff ff ff ff');
         $nameLen = $file->int8();
         $name = $file->utf8Text($nameLen);
         $file->assertEqualHex('ff ff ff ff 00 00 00 00 00 00 00 00');
@@ -385,7 +386,12 @@ function testread($filename) {
                 break;
             case '00 00 00 00 ff ff ff ff':
                 // люди
-                $file->assertEqualHex('00 00 00 00 ff ff ff ff 00 00 00 00 00 00 00 00 00 01 40 42 0f 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 f5 01 ff 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00');
+                $file->assertEqualHex('00 00 00 00 ff ff ff ff 00 00 00 00 00 00 00 00 00 01 40 42 0f 00 00 00 00 00 00 00 00 00');
+                $readBlocks = $file->int32();
+                if ($readBlocks) {
+                    $file->unknownblock(24);
+                }
+                $file->assertEqualHex('00 00 00 00 00 00 00 00 00 00 00 00 f5 01 ff 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00');
                 $file->unknownblock(1);
                 $file->assertEqualHex('00 00 00 00 00 00 00 00 00 0a 00 00 00 06 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 02 00 00 00');
                 $humanName = $file->utf8Text($file->int8());
@@ -395,7 +401,9 @@ function testread($filename) {
                 $file->assertEqualHex('00 50 c3 c7 00 50 c3 c7 00 00 00 00 00 00 02 00 00 00 00 00 80 bf 00 00 80 bf 00 00 00 00');
                 $file->unknownblock(6);
                 $file->assertEqualHex('00 00 00 00 00 00 00 00 00 00 00 01 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00');
-                $file->assertEqualHex('ff ff ff ff 03 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 07 00 06 00 05 00 00 00 00 00 00 00 00 00 00 00');
+                $file->assertEqualHex('ff ff ff ff 03 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00');
+                $file->unknownblock(4);
+                $file->assertEqualHex('05 00 00 00 00 00 00 00 00 00 00 00');
                 $file->assertEqualHex('01 0b 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 7d 00 00 00 00 00 00 00 00 00 00 00 00');
                 $gender = $file->int8(); // 0 - м, 1 - ж
                 if ($gender != 0 and $gender != 1) {
@@ -428,7 +436,7 @@ function testread($filename) {
     if ($scriptsCount) {
         $strangeBlock = '01 00 00 00';
         for ($i = 1; $i <= $scriptsCount; ++$i) {
-            $file->assertEqualHex('d0 07 00 00');
+            $file->unknownblock(4);
             assertEquals($i, $file->int32());
         }
         for ($i = 0; $i < $scriptsCount; ++$i) {
