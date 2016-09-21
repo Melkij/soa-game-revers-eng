@@ -385,10 +385,14 @@ function testread($filename) {
         $file->assertEqualHex('ff ff ff ff 00 00 00 00 00 00 00 00');
 
         echo 'Object type '.$objectTypeId . ' uid '.$objectUid.PHP_EOL;
-        if ($file->hexahead(8) == '00 00 00 00 00 00 00 00') {
+        if ($objectTypeId >= 1021 and $objectTypeId <= 1026 and $file->hexahead(4) == '00 00 00 00') {
+            // хак камней
+            $file->assertEqualHex('00 00 00 00'); // ahead assert. Ну и всё тут
+            continue;
+        }
+        if ($file->hexahead(16) == '00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00') {
             // хак построек
-            $file->assertEqualHex('00 00 00 00 00 00 00 00'); // ahead assert
-            $file->assertEqualHex('00 00 00 00 00 00 00 00'); // own block
+            $file->assertEqualHex('00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00'); // ahead assert
             continue;
         }
         $file->unknownblock(8);
@@ -713,15 +717,16 @@ function testread($filename) {
 }
 
 $count = 0;
-$success = 0;
+$failed = [];
 foreach (glob('testmis/*.mis') as $file) {
     ++$count;
     try {
         testread($file);
-        ++$success;
     } catch (Exception $e) {
+        $failed[] = $file;
         echo 'failed: ' . $e,PHP_EOL;
     }
     echo PHP_EOL,PHP_EOL;
 }
-echo $count . ' total, '. $success .' success, ', ($count - $success) . ' failed',PHP_EOL;
+echo $count . ' total, '. ($count - count($failed)) .' success, ', count($failed) . ' failed. Failed files:',PHP_EOL;
+echo join(PHP_EOL, $failed);
