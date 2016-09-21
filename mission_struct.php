@@ -124,23 +124,65 @@ function testread($filename) {
         22 => 'F-15',
     ];
     $ammunition = [
+        //struct 2
+        2 => 'пулемёт M60',
+        53 => 'автомат АК-74',
+        54 => 'беретта',
+        55 => 'УЗИ',
+        56 => 'MP-5',
+        57 => 'пулемёт РПК',
+        61 => 'СВД',
+        116 => 'арбалет',
+        117 => 'дробовик',
+
+        // struct 4
         1 => 'лента 7,62',
         21 => 'обойма ак74',
+        22 => 'обойма 20мм',
         23 => 'дробь',
-        24 => 'болты',
+        24 => 'арбалетные болты',
         25 => 'лента 14.5мм',
-        26 => '40мм зажигательные',
-        27 => '40мм фугас',
+        26 => '40мм граната зажигательные',
+        27 => '40мм граната фугас',
+        37 => 'снаряд rpg7',
+        38 => 'ракета sa7',
+        127 => 'дымовая граната бтр/танки',
+        142 => 'патроны к СВД',
+        // struct 4 heavy only ammo
         33 => '2c3 фугас',
         34 => '2c3 дымовые',
         35 => '2c3 осветительные',
         36 => '2c3 минные',
-        37 => 'снаряд rpg7',
-        38 => 'ракета sa7',
         43 => 'ракета TOW',
-        127 => 'дымовая граната бтр/танки',
-        142 => 'патроны к СВД',
-        2007 => 'алюминиевый чумадан',
+
+        //struct 8
+        216 => 'лёгкий бронежилет',
+        218 => 'тяжёлый бронежилет',
+
+        //struct 1
+        128 => 'флай',
+        217 => 'прибор ночного видения',
+        219 => 'бинокль',
+        223 => 'противнотанковая мина',
+        224 => 'алюминиевый чумадан',
+        225 => 'взрывчатка',
+        226 => 'аптечка',
+        227 => 'компьютерный чип',
+        237 => 'приманка для ползучих мин',
+        238 => 'целеуказатель сброса бомбы',
+        251 => 'чип слежения за випом из 7 миссии',
+
+        //struct 34
+        131 => 'метательный ножиг',
+        132 => 'ручная граната',
+        136 => 'Молотов',
+        146 => 'дымовая граната',
+        147 => 'усыпляющая граната',
+
+        //struct 66
+        58 => 'гранатомёт РПГ-7',
+        59 => 'ручная пусковая установка SA-7',
+        252 => 'ручной гранатомёт M79',
     ];
     $humansType = [
         3000 => 'мужчина',
@@ -389,18 +431,81 @@ function testread($filename) {
         $ammoCount = $file->int32();
         echo 'amm count '.$ammoCount.PHP_EOL;
         for ($ammo = 0; $ammo < $ammoCount; ++$ammo) {
-            $file->assertEqualHex('04 00 00 00');
-            $ammoObjectId = $file->int32();
-            $ammoRelationObjectId = $file->int32();
-            $file->assertEqualHex('00 0e 00 0d 00 01');
-            $ammoSize = $file->int32(); // число боеприпасов, т.е. например номинальные 250 для 14,5мм ленты
-            $file->assertEqualHex('00 01');
-            if (isset($ammoDict[ $ammoRelationObjectId ])) {
-                throw new \LogicException('ammo dict ' . $ammoRelationObjectId . ' exists! Not global unique?');
+            $ammoStructType = $file->int32();
+            $ammoObjectId = $file->int32(); // тип объекта
+            $ammoRelationObjectId = $file->int32(); // id, на который потом ссылаются в описании багажника
+            switch ($ammoStructType) {
+                case 4:
+                    // боеприпасы, для людей и для техники
+                    $file->assertEqualHex('00 0e 00 0d 00 01');
+                    $ammoSize = $file->int32(); // число боеприпасов, т.е. например номинальные 250 для 14,5мм ленты
+                    $file->assertEqualHex('00 01');
+                    break;
+                case 1:
+                    // всякая хрень вроде чумодана
+                    $file->assertEqualHex('00 ff ff ff ff 01');
+                    break;
+                case 2:
+                    // человеческое оружие
+                    $knownNext = [
+                        '00 0e 00 0d 00', // этот блок в нескольких видах явным образом повторяется. Может быть, им рулится вес/объём одного элемента для посчёта занятости слота машины/человека?
+                        '00 ff ff ff ff',
+                    ];
+                    foreach ($knownNext as $hex) {
+                        if ($file->hexahead(5) == $hex) {
+                            $file->assertEqualHex($hex);
+                        }
+                    }
+                    $file->assertEqualHex('01 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 f4 01 00 00 40 00 41 00 42 00 41 00 47 00 46 00 00 00 00 00 4a 00 49 00 00 00 4a 01 00 00 00 00 00 00 00 00 00 ff ff ff ff ff ff ff ff ff ff ff ff 0c 75 6e 6b 6e 6f 77 6e 20 6e 61 6d 65 ff ff ff ff');
+                    break;
+                case 8:
+                    $file->assertEqualHex('00 0e 00 0d 00 01');
+                    $armor = $file->int32();
+                    if (! in_array($armor, [
+                        40, // лёгкий броник
+                        80, // тяжёлый
+                    ])) {
+                        throw new LogicException('unknown armor size '.$armor);
+                    }
+                    break;
+                case 34:
+                    $knownNext = [
+                        '00 0e 00 0d 00',
+                        '00 ff ff ff ff',
+                    ];
+                    foreach ($knownNext as $hex) {
+                        if ($file->hexahead(5) == $hex) {
+                            $file->assertEqualHex($hex);
+                        }
+                    }
+                    $file->assertEqualHex('01 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 f4 01 00 00 40 00 41 00 42 00 41 00 47 00 46 00 00 00 00 00 4a 00 49 00 00 00 4a 01 04 00 00 00');
+                    $file->unknownblock(5);
+                    $file->assertEqualHex('00 00 00 00 0e 00 0d 00 01 01 00 00 00 00 01 00 00 00 00 00 ff ff ff ff ff ff ff ff ff ff ff ff 0c 75 6e 6b 6e 6f 77 6e 20 6e 61 6d 65 ff ff ff ff');
+                    break;
+                case 66:
+                    $file->assertEqualHex('00 e8 03 00 00 01 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 f4 01 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 02 00');
+                    $file->unknownblock(2);
+                    $file->assertEqualHex('00 00 00 01 00 00 00 00 00 00 00 00 00 ff ff ff ff ff ff ff ff ff ff ff ff 0c 75 6e 6b 6e 6f 77 6e 20 6e 61 6d 65 ff ff ff ff');
+                    break;
+                default:
+                    echo $file->hexahead(20000),PHP_EOL;
+                    throw new LogicException('unknown '.$ammoStructType);
             }
-            $ammoDict[ $ammoRelationObjectId ] = [
-                'id' => $ammoObjectId,
-            ];
+
+            if (isset($ammunition[ $ammoObjectId ])) {
+                echo 'found '.$ammoObjectId.' "'.$ammunition[ $ammoObjectId ].'" (struct '.$ammoStructType.')'.PHP_EOL;
+            } else {
+                echo 'found unknown ammunition '.$ammoObjectId.PHP_EOL;
+            }
+
+            if (isset($ammoRelationObjectId)) {
+                if (isset($ammoDict[ $ammoRelationObjectId ])) {
+                    throw new \LogicException('ammo dict ' . $ammoRelationObjectId . ' exists! Not global unique?');
+                }
+                $ammoDict[ $ammoRelationObjectId ] = [
+                    'id' => $ammoObjectId,
+                ];
+            }
         }
 
         $file->assertEqualHex('00 00 00 00 00 00 00 00 00 00 00 00');
@@ -607,7 +712,7 @@ function testread($filename) {
     echo 'read complete',PHP_EOL;
 }
 
-foreach (glob('testmis/*.mis') as $file) {
+foreach (glob('testmis/hummer_*.mis') as $file) {
     try {
         testread($file);
     } catch (Exception $e) {
