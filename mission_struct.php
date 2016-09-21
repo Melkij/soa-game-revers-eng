@@ -712,11 +712,16 @@ function testread($filename) {
     echo 'read complete',PHP_EOL;
 }
 
-foreach (glob('testmis/hummer_*.mis') as $file) {
+$count = 0;
+$success = 0;
+foreach (glob('testmis/*.mis') as $file) {
+    ++$count;
     try {
         testread($file);
+        ++$success;
     } catch (Exception $e) {
         echo 'failed: ' . $e,PHP_EOL;
     }
     echo PHP_EOL,PHP_EOL;
 }
+echo $count . ' total, '. $success .' success, ', ($count - $success) . ' failed',PHP_EOL;
