@@ -260,13 +260,15 @@ function testread($filename) {
         $position1 = $file->float();
         $position2 = $file->float();
         $maybeTypeBlock = $file->hexahead(4);
-        $file->int32(); // 00 00 00 80 для юнитов, 00 00 00 00 для сооружений?
+        $file->int32(); // 00 00 00 80 для юнитов, 00 00 00 00 для сооружений? нет, не так
         $rotateAngle = $file->float(); // угол поворота?
         $file->assertEqualHex('00 00 80 3f 01 01 00 00 00 00 16 00 00 00 00 00 00 00');
         $file->unknownblock(1); // тоже поменялось с углом поворота
         $file->assertEqualHex('00 00 00 01');
-        assertEquals($file->int32(), $file->int32()); // две непонятные пары повторяющихся совершенно идентичных 4 байт,
-        assertEquals($file->int32(), $file->int32()); // идентичны для нескольких одинаковый объектов, различны для разных объектов
+        $maxhealth = $file->int32();
+        $currenthealth = $file->int32();
+        $maxarmor = $file->int32();
+        $currentarmor = $file->int32();
         $file->assertEqualHex('ff ff ff ff 00 00 00 00');
         $file->unknownblock(4); // добавили коров, поплыл байтик
         $file->assertEqualHex('00 00 80 3f 00 00 00 00 00 00 ff ff ff ff ff ff ff ff ff ff ff ff');
@@ -482,8 +484,8 @@ function testread($filename) {
 
     echo 'read complete',PHP_EOL;
 }
-
-foreach (glob('testmis/enemy*.mis') as $file) {
+//testread('testmis/2player_female_x1.mis');
+foreach (glob('testmis/*.mis') as $file) {
     try {
         testread($file);
     } catch (Exception $e) {
