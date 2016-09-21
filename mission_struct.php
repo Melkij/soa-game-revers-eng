@@ -447,17 +447,26 @@ function testread($filename) {
                 $file->assertEqualHex('00 00 00 00 00 00 00');
                 $file->unknownblock(2);
                 $file->assertEqualHex('00 00 01 00 00 00 00 00 00 00 00 00 00 00');
-                $file->unknownblock(12);
+                $blockCount = $file->int32();
+                if ($blockCount == 0) {
+                    // штатное значение без снаряжения
+                } elseif ($blockCount == 8) {
+                    $file->unknownblock(18);
+                } else {
+                    throw new LogicException('unknown value '.$blockCount);
+                }
+                $file->unknownblock(8);
                 if ($file->hexahead(5)!= 'ff ff ff ff 03') {
-                    $file->unknownblock(14); // реакция на ПНВ, бинокль
+                    $file->unknownblock(14); // пнв,бинокль
                 }
                 $file->assertEqualHex('ff ff ff ff 03 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00');
                 $currentLevel = $file->int32();
                 $killsCount = $file->int32(); // удвоенное число необходимых убийств для этого уровня. Возможно, убитый человек +2, животное +1
                 $file->assertEqualHex('00 00 00 00');
                 $file->unknownblock(4+1);
-                $file->assertEqualHex('00 00 00 00 00 00 00 00 00 00 00');
-                $file->assertEqualHex('01 0b 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00');
+                $file->assertEqualHex('00 00 00 00 00 00 00 00 00 00 00 01 0b 00 00 00');
+                $file->unknownblock(1+4);
+                $file->assertEqualHex('00 00 00 00 00 00 00');
                 $file->unknownblock(8); // реакция на ПНВ, бинокль
                 $file->assertEqualHex('00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00');
                 // навыки
@@ -469,7 +478,8 @@ function testread($filename) {
                 if (! isset($availableSkills[ $skill2 ])) {
                     throw new LogicException('skill '.$skill2.' undefined');
                 }
-                assertEquals($inUnit, $file->int8());
+                echo 'skills: '.$availableSkills[ $skill1 ].', '.$availableSkills[ $skill2 ],PHP_EOL;
+                $file->unknownblock(1);
                 $file->unknownblock(1);
                 $file->assertEqualHex('00 00 00 00 00 00 00 00 00 00 00 00');
                 $gender = $file->int8(); // 0 - м, 1 - ж
@@ -538,7 +548,7 @@ function testread($filename) {
     echo 'read complete',PHP_EOL;
 }
 
-foreach (glob('testmis/enemy_male3_btr80*.mis') as $file) {
+foreach (glob('testmis/*.mis') as $file) {
     try {
         testread($file);
     } catch (Exception $e) {
