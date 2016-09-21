@@ -273,7 +273,13 @@ function testread($filename) {
         $nameLen = $file->int8();
         $name = $file->utf8Text($nameLen);
         $file->assertEqualHex('ff ff ff ff 00 00 00 00 00 00 00 00');
-        switch ($file->hexahead(8)) {
+        if (in_array($objectTypeId, [4009, 4010])) {
+            // дальше 8 ff, что считаю за машину, но это птицы
+            echo 'Animal(bird) type '.$objectTypeId.PHP_EOL;
+            $file->assertEqualHex('ff ff ff ff ff ff ff ff 00 00 00 00 00 00 00 00 00 01 40 42 0f 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 ff 00 ff 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00');
+            $file->unknownblock(1);
+            $file->assertEqualHex('00 00 00 00 00 00 00 00 00 01 00 00 00 01 00 00 00 00 00 00 00 02 00 00 00 00 00 00 00');
+        } else switch ($file->hexahead(8)) {
             case '00 00 00 00 00 00 00 00':
                 echo 'Build type '.$objectTypeId.PHP_EOL;
                 // постройка?
@@ -385,6 +391,7 @@ function testread($filename) {
                 }
                 break;
             case '00 00 00 00 ff ff ff ff':
+                echo 'human type '.$objectTypeId,PHP_EOL;
                 // люди
                 $file->assertEqualHex('00 00 00 00 ff ff ff ff 00 00 00 00 00 00 00 00 00 01 40 42 0f 00 00 00 00 00 00 00 00 00');
                 $readBlocks = $file->int32();
@@ -414,12 +421,14 @@ function testread($filename) {
                 $file->assertEqualHex('0b 00 00 00 00 00 00');
                 break;
             case '01 00 00 00 ff ff ff ff':
+                echo 'animal type '.$objectTypeId,PHP_EOL;
                 // животные
                 $file->assertEqualHex('01 00 00 00 ff ff ff ff 00 00 00 00 00 00 00 00 00 01 40 42 0f 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 ff 01 ff 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00');
                 $file->unknownblock(1);
                 $file->assertEqualHex('00 00 00 00 00 00 00 00 00 01 00 00 00 01 00 00 00 00 00 00 00 02 00 00 00 00 00 00 00 00 00 00 00 00');
                 break;
             case '00 00 00 00 01 00 00 00':
+                echo 'ammo type '.$objectTypeId,PHP_EOL;
                 // аммуниция прямо на земле, сейчас на примере чумодана
                 $file->assertEqualHex('00 00 00 00 01 00 00 00 e0 00 00 00');
                 $file->unknownblock(1);
@@ -474,7 +483,7 @@ function testread($filename) {
     echo 'read complete',PHP_EOL;
 }
 
-foreach (glob('testmis/*.mis') as $file) {
+foreach (glob('testmis/enemy*.mis') as $file) {
     try {
         testread($file);
     } catch (Exception $e) {
