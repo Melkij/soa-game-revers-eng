@@ -287,7 +287,7 @@ function testread($filename) {
         $name = $file->utf8Text($nameLen);
         $file->assertEqualHex('ff ff ff ff 00 00 00 00 00 00 00 00');
 
-        echo 'Object type '.$objectTypeId.PHP_EOL;
+        echo 'Object type '.$objectTypeId . ' uid '.$objectUid.PHP_EOL;
         if ($file->hexahead(8) == '00 00 00 00 00 00 00 00') {
             // хак построек
             $file->assertEqualHex('00 00 00 00 00 00 00 00'); // ahead assert
@@ -396,7 +396,8 @@ function testread($filename) {
                 $file->unknownblock(24);
                 $file->assertEqualHex('00 00 00 00 00');
                 $file->unknownblock(2);
-                $file->assertEqualHex('00 00 00');
+                $file->assertEqualHex('00 00');
+                $file->unknownblock(1); // возможно метка, есть ли люди внутри
                 $file->unknownblock(20);
                 $file->unknownblock(1);
                 $file->assertEqualHex('00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00');
@@ -427,11 +428,25 @@ function testread($filename) {
                 $file->assertEqualHex('02 00 00 00');
                 $humanName = $file->utf8Text($file->int8());
                 echo $humanName,PHP_EOL;
-                $file->assertEqualHex('00 ff ff ff ff ff ff ff ff 04 00 00 00');
+                $inUnit = $file->int8();
+                if ($inUnit == 0) {
+                    $file->assertEqualHex('ff ff ff ff ff ff ff ff');
+                } elseif ($inUnit == 1) {
+                    $inObjectUid = $file->int32();
+                    $inObjectPosition = $file->int32();
+                    echo 'in unit '.$inObjectUid.' at pos '.$inObjectPosition.PHP_EOL;
+                } else {
+                    throw new LogicException('unknown in unit '.$inUnit);
+                }
+                $file->assertEqualHex('04 00 00 00');
                 $file->unknownblock(36);
-                $file->assertEqualHex('00 50 c3 c7 00 50 c3 c7 00 00 00 00 00 00 02 00 00 00 00 00 80 bf 00 00 80 bf 00 00 00 00');
+                $file->assertEqualHex('00 50 c3 c7 00 50 c3 c7');
+                assertEquals($inUnit, $file->int8());
+                $file->assertEqualHex('00 00 00 00 00 02 00 00 00 00 00 80 bf 00 00 80 bf 00 00 00 00');
                 $file->unknownblock(6);
-                $file->assertEqualHex('00 00 00 00 00 00 00 00 00 00 00 01 00 00 00 00 00 00 00 00 00 00 00');
+                $file->assertEqualHex('00 00 00 00 00 00 00');
+                $file->unknownblock(2);
+                $file->assertEqualHex('00 00 01 00 00 00 00 00 00 00 00 00 00 00');
                 $file->unknownblock(12);
                 if ($file->hexahead(5)!= 'ff ff ff ff 03') {
                     $file->unknownblock(14); // реакция на ПНВ, бинокль
@@ -454,7 +469,7 @@ function testread($filename) {
                 if (! isset($availableSkills[ $skill2 ])) {
                     throw new LogicException('skill '.$skill2.' undefined');
                 }
-                $file->assertEqualHex('00');
+                assertEquals($inUnit, $file->int8());
                 $file->unknownblock(1);
                 $file->assertEqualHex('00 00 00 00 00 00 00 00 00 00 00 00');
                 $gender = $file->int8(); // 0 - м, 1 - ж
@@ -523,7 +538,7 @@ function testread($filename) {
     echo 'read complete',PHP_EOL;
 }
 
-foreach (glob('testmis/enemy_male3_binokle,pnv,empty.mis') as $file) {
+foreach (glob('testmis/enemy_male3_btr80*.mis') as $file) {
     try {
         testread($file);
     } catch (Exception $e) {
