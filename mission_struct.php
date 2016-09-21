@@ -433,13 +433,18 @@ function testread($filename) {
                 $file->unknownblock(6);
                 $file->assertEqualHex('00 00 00 00 00 00 00 00 00 00 00 01 00 00 00 00 00 00 00 00 00 00 00');
                 $file->unknownblock(12);
+                if ($file->hexahead(5)!= 'ff ff ff ff 03') {
+                    $file->unknownblock(14); // реакция на ПНВ, бинокль
+                }
                 $file->assertEqualHex('ff ff ff ff 03 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00');
                 $currentLevel = $file->int32();
                 $killsCount = $file->int32(); // удвоенное число необходимых убийств для этого уровня. Возможно, убитый человек +2, животное +1
                 $file->assertEqualHex('00 00 00 00');
                 $file->unknownblock(4+1);
                 $file->assertEqualHex('00 00 00 00 00 00 00 00 00 00 00');
-                $file->assertEqualHex('01 0b 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00');
+                $file->assertEqualHex('01 0b 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00');
+                $file->unknownblock(8); // реакция на ПНВ, бинокль
+                $file->assertEqualHex('00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00');
                 // навыки
                 $skill1 = $file->int32();
                 if (! isset($availableSkills[ $skill1 ])) {
@@ -518,7 +523,7 @@ function testread($filename) {
     echo 'read complete',PHP_EOL;
 }
 
-foreach (glob('testmis/*.mis') as $file) {
+foreach (glob('testmis/enemy_male3_binokle,pnv,empty.mis') as $file) {
     try {
         testread($file);
     } catch (Exception $e) {
