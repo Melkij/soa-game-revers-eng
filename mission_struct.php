@@ -672,7 +672,21 @@ function testread($filename) {
         }
     }
 
-    $file->assertEqualHex('01 00 00 00 00 00 00 00 02 00 00 00 00 00 00 00 00 00 00 00 24 00 00 00');
+    $file->assertEqualHex('01 00 00 00');
+    $regionsCount = $file->int32();
+    for ($i = 1; $i <= $regionsCount; ++$i) {
+        $regionId = $file->int32();
+        // очевидно позиции двух диагональных углов прямоугольника
+        $pos1 = $file->float();
+        $pos2 = $file->float();
+        $pos3 = $file->float();
+        $pos4 = $file->float();
+        $nameLen = $file->int8();
+        $regionName = $file->utf8Text($nameLen);
+        echo 'region '.$regionName . ' ('.$regionId.') at '.$pos1,' ',$pos2,' ',$pos3,' ',$pos4,PHP_EOL;
+    }
+
+    $file->assertEqualHex('02 00 00 00 00 00 00 00 00 00 00 00 24 00 00 00');
     $scriptsCount = $file->int32();
     $strangeBlock = '00 00 00 00';
     if ($scriptsCount) {
@@ -724,11 +738,11 @@ foreach (glob('testmis/*.mis') as $file) {
         ob_start();
         testread($file);
         echo PHP_EOL,PHP_EOL;
-        ob_clean();
+        echo ob_get_clean();
     } catch (Exception $e) {
         echo ob_get_clean();
         $failed[] = $file;
-        echo 'failed: ' . $e,PHP_EOL;
+        echo 'failed: ' . $e,PHP_EOL,PHP_EOL;
     }
 }
 echo $count . ' total, '. ($count - count($failed)) .' success, ', count($failed) . ' failed. Failed files:',PHP_EOL;
