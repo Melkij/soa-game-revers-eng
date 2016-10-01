@@ -81,6 +81,26 @@ class binaryFile
         $this->position += $len;
     }
 
+    public function assertEqualHexAny(...$equals)
+    {
+        $len = null;
+        $infile = '';
+        foreach ($equals as $eq) {
+            $eqlen = preg_match_all('~[\da-f]{2}~', $eq, $null);
+            if (is_null($len)) {
+                $len = $eqlen;
+                $infile = $this->binhex($this->readbyte($len));
+            } elseif ($len !== $eqlen) {
+                throw new LogicException('blocklen mismatch');
+            }
+
+            if ($eq === $infile) {
+                return;
+            }
+        }
+
+        throw new LogicException('readed block ' . $infile. ' not match');
+    }
     public function assertEqualHex($equals)
     {
         $len = preg_match_all('~[\da-f]{2}~', $equals, $null);
@@ -780,9 +800,7 @@ function testread($filename) {
 $count = 0;
 $failed = [];
 $testcases = [
-    'ak74x3.mis',
-    'middlebox3_empty.mis',
-    'middlebox3_ak74x3_each.mis'
+    'enemy_mutant,nitro,knight_same_skin_equip.mis'
 ];
 foreach (glob('testmis/*.mis') as $file) {
     ++$count;
