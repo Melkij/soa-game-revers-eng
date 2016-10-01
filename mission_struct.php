@@ -400,8 +400,14 @@ function testread($filename) {
             continue;
         }
         //echo $file->hexahead(8),PHP_EOL;
-        $file->unknownblock(8);
-        if (in_array($objectTypeId, [2001, 2007, 2037, 2033])) {
+        //$file->unknownblock(8);
+        $file->unknownblock(4);
+        $structHex = $file->hexahead(4);
+        if ($structHex == 'ff ff ff ff') {
+            $file->assertEqualHex('ff ff ff ff');
+            // contune later - humans, units
+        } else {
+            $structId = $file->int32();
             if ($objectTypeId == 2007) {
                 // хак лежащей на земле аммуниции (алюминиевый чумадан)
                 $file->assertEqualHex('e0 00 00 00');
