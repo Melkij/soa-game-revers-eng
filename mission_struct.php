@@ -721,12 +721,15 @@ $failed = [];
 foreach (glob('testmis/*.mis') as $file) {
     ++$count;
     try {
+        ob_start();
         testread($file);
+        echo PHP_EOL,PHP_EOL;
+        ob_clean();
     } catch (Exception $e) {
+        echo ob_get_clean();
         $failed[] = $file;
         echo 'failed: ' . $e,PHP_EOL;
     }
-    echo PHP_EOL,PHP_EOL;
 }
 echo $count . ' total, '. ($count - count($failed)) .' success, ', count($failed) . ' failed. Failed files:',PHP_EOL;
 echo join(PHP_EOL, $failed);
