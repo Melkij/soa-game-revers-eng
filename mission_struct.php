@@ -385,7 +385,10 @@ function testread($filename) {
         $file->assertEqualHex('ff ff ff ff 00 00 00 00 00 00 00 00');
 
         echo 'Object type '.$objectTypeId . ' uid '.$objectUid.PHP_EOL;
-        if ($objectTypeId >= 1021 and $objectTypeId <= 1026 and $file->hexahead(4) == '00 00 00 00') {
+        if ((
+            ($objectTypeId >= 1021 and $objectTypeId <= 1026) // камни
+            or $objectTypeId == 1030 // сосна, деревья в общем тут же должны быть
+            ) and $file->hexahead(4) == '00 00 00 00') {
             // хак камней
             $file->assertEqualHex('00 00 00 00'); // ahead assert. Ну и всё тут
             continue;
