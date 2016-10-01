@@ -211,6 +211,67 @@ function testread($filename) {
 
     echo basename($filename),PHP_EOL;
     $file = new binaryFile($filename);
+
+    $fnAmmoInnerBoxParser = function($ammoStructType) use($file) {
+        switch ($ammoStructType) {
+            case 4:
+                // боеприпасы, для людей и для техники
+                $file->assertEqualHex('00 0e 00 0d 00 01');
+                $ammoSize = $file->int32(); // число боеприпасов, т.е. например номинальные 250 для 14,5мм ленты
+                $file->assertEqualHex('00 01');
+                break;
+            case 1:
+                // всякая хрень вроде чумодана
+                $file->assertEqualHex('00 ff ff ff ff 01');
+                break;
+            case 2:
+                // человеческое оружие
+                $knownNext = [
+                    '00 0e 00 0d 00', // этот блок в нескольких видах явным образом повторяется. Может быть, им рулится вес/объём одного элемента для посчёта занятости слота машины/человека?
+                    '00 ff ff ff ff',
+                ];
+                foreach ($knownNext as $hex) {
+                    if ($file->hexahead(5) == $hex) {
+                        $file->assertEqualHex($hex);
+                    }
+                }
+                $file->assertEqualHex('01 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 f4 01 00 00 40 00 41 00 42 00 41 00 47 00 46 00 00 00 00 00 4a 00 49 00 00 00 4a 01 00 00 00 00 00 00 00 00 00 ff ff ff ff ff ff ff ff ff ff ff ff 0c 75 6e 6b 6e 6f 77 6e 20 6e 61 6d 65 ff ff ff ff');
+                break;
+            case 8:
+                $file->assertEqualHex('00 0e 00 0d 00 01');
+                $armor = $file->int32();
+                if (! in_array($armor, [
+                    40, // лёгкий броник
+                    80, // тяжёлый
+                ])) {
+                    throw new LogicException('unknown armor size '.$armor);
+                }
+                break;
+            case 34:
+                $knownNext = [
+                    '00 0e 00 0d 00',
+                    '00 ff ff ff ff',
+                ];
+                foreach ($knownNext as $hex) {
+                    if ($file->hexahead(5) == $hex) {
+                        $file->assertEqualHex($hex);
+                    }
+                }
+                $file->assertEqualHex('01 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 f4 01 00 00 40 00 41 00 42 00 41 00 47 00 46 00 00 00 00 00 4a 00 49 00 00 00 4a 01 04 00 00 00');
+                $file->unknownblock(5);
+                $file->assertEqualHex('00 00 00 00 0e 00 0d 00 01 01 00 00 00 00 01 00 00 00 00 00 ff ff ff ff ff ff ff ff ff ff ff ff 0c 75 6e 6b 6e 6f 77 6e 20 6e 61 6d 65 ff ff ff ff');
+                break;
+            case 66:
+                $file->assertEqualHex('00 e8 03 00 00 01 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 f4 01 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 02 00');
+                $file->unknownblock(2);
+                $file->assertEqualHex('00 00 00 01 00 00 00 00 00 00 00 00 00 ff ff ff ff ff ff ff ff ff ff ff ff 0c 75 6e 6b 6e 6f 77 6e 20 6e 61 6d 65 ff ff ff ff');
+                break;
+            default:
+                echo $file->hexahead(20000),PHP_EOL;
+                throw new LogicException('unknown '.$ammoStructType);
+        }
+    };
+
     $file->assertEqualHex('38 f9 b3 0a 62 93 d1 11 9a 2b 08 00 00 30 05 12 0a 00 00 00 02 00 00 00 0a 00 00 00');
     $titleLenght = $file->int8();
     $title = $file->utf8Text($titleLenght);
@@ -408,35 +469,40 @@ function testread($filename) {
             // contune later - humans, units
         } else {
             $structId = $file->int32();
-            if ($structId) {
-                $equipId = $file->int32();
-                assertEquals($objectUid, $file->int32());
-                $file->assertEqualHex('00');
-                $file->unknownblock(4);
-                $file->assertEqualHex('01 00 00 00 00 00');
-                switch ($objectTypeId) {
-                    case 2001:
-                        // ручное оружие (ак74)
-                        $file->assertEqualHex('00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 f4 01 00 00');
-                        $file->unknownblock(24);
-                        $file->assertEqualHex('00 00 00 00 00 00 00 00 00 ff ff ff ff ff ff ff ff ff ff ff ff 0c 75 6e 6b 6e 6f 77 6e 20 6e 61 6d 65 ff ff ff ff 00 00 00 00 00');
-                        break;
-                    case 2037:
-                        // ползучий мин
-                        $file->unknownblock(4);
-                        $file->assertEqualHex('00 ff ff ff ff 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00');
-                        break;
-                    case 2033:
-                        $file->assertEqualHex('00 00 ed 3e 00 00 00 00');
-                        break;
-                    case 2007:
-                        // чумадан
-                        break;
-                    default:
-                        throw new \LogicException('unknown struct for '.$objectTypeId);
-                }
-                $file->assertEqualHex('00 00 00 00');
+            $equipId = $file->int32();
+            assertEquals($objectUid, $file->int32());
+            $file->assertEqualHex('00');
+            $file->unknownblock(4);
+            $file->assertEqualHex('01 00 00 00 00 00');
+            switch ($objectTypeId) {
+                case 2001:
+                    // ручное оружие (ак74)
+                    $file->assertEqualHex('00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 f4 01 00 00');
+                    $file->unknownblock(24);
+                    $file->assertEqualHex('00 00 00 00 00 00 00 00 00 ff ff ff ff ff ff ff ff ff ff ff ff 0c 75 6e 6b 6e 6f 77 6e 20 6e 61 6d 65 ff ff ff ff 00 00 00 00 00');
+                    break;
+                case 2037:
+                    // ползучий мин
+                    $file->unknownblock(4);
+                    $file->assertEqualHex('00 ff ff ff ff 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00');
+                    break;
+                case 2033:
+                    $file->assertEqualHex('00 00 ed 3e');
+                    $inBoxCount = $file->int32();
+                    for ($structCounter = 0; $structCounter < $inBoxCount; ++$structCounter) {
+                        $ammoStructType = $file->int32();
+                        $ammoObjectId = $file->int32(); // тип объекта
+                        $ammoRelationObjectId = $file->int32(); // id, на который потом ссылаются в описании багажника
+                        $fnAmmoInnerBoxParser($ammoStructType);
+                    }
+                    break;
+                case 2007:
+                    // чумадан
+                    break;
+                default:
+                    throw new \LogicException('unknown struct for '.$objectTypeId);
             }
+            $file->assertEqualHex('00 00 00 00');
             continue;
         }
 
@@ -474,63 +540,8 @@ function testread($filename) {
             $ammoStructType = $file->int32();
             $ammoObjectId = $file->int32(); // тип объекта
             $ammoRelationObjectId = $file->int32(); // id, на который потом ссылаются в описании багажника
-            switch ($ammoStructType) {
-                case 4:
-                    // боеприпасы, для людей и для техники
-                    $file->assertEqualHex('00 0e 00 0d 00 01');
-                    $ammoSize = $file->int32(); // число боеприпасов, т.е. например номинальные 250 для 14,5мм ленты
-                    $file->assertEqualHex('00 01');
-                    break;
-                case 1:
-                    // всякая хрень вроде чумодана
-                    $file->assertEqualHex('00 ff ff ff ff 01');
-                    break;
-                case 2:
-                    // человеческое оружие
-                    $knownNext = [
-                        '00 0e 00 0d 00', // этот блок в нескольких видах явным образом повторяется. Может быть, им рулится вес/объём одного элемента для посчёта занятости слота машины/человека?
-                        '00 ff ff ff ff',
-                    ];
-                    foreach ($knownNext as $hex) {
-                        if ($file->hexahead(5) == $hex) {
-                            $file->assertEqualHex($hex);
-                        }
-                    }
-                    $file->assertEqualHex('01 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 f4 01 00 00 40 00 41 00 42 00 41 00 47 00 46 00 00 00 00 00 4a 00 49 00 00 00 4a 01 00 00 00 00 00 00 00 00 00 ff ff ff ff ff ff ff ff ff ff ff ff 0c 75 6e 6b 6e 6f 77 6e 20 6e 61 6d 65 ff ff ff ff');
-                    break;
-                case 8:
-                    $file->assertEqualHex('00 0e 00 0d 00 01');
-                    $armor = $file->int32();
-                    if (! in_array($armor, [
-                        40, // лёгкий броник
-                        80, // тяжёлый
-                    ])) {
-                        throw new LogicException('unknown armor size '.$armor);
-                    }
-                    break;
-                case 34:
-                    $knownNext = [
-                        '00 0e 00 0d 00',
-                        '00 ff ff ff ff',
-                    ];
-                    foreach ($knownNext as $hex) {
-                        if ($file->hexahead(5) == $hex) {
-                            $file->assertEqualHex($hex);
-                        }
-                    }
-                    $file->assertEqualHex('01 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 f4 01 00 00 40 00 41 00 42 00 41 00 47 00 46 00 00 00 00 00 4a 00 49 00 00 00 4a 01 04 00 00 00');
-                    $file->unknownblock(5);
-                    $file->assertEqualHex('00 00 00 00 0e 00 0d 00 01 01 00 00 00 00 01 00 00 00 00 00 ff ff ff ff ff ff ff ff ff ff ff ff 0c 75 6e 6b 6e 6f 77 6e 20 6e 61 6d 65 ff ff ff ff');
-                    break;
-                case 66:
-                    $file->assertEqualHex('00 e8 03 00 00 01 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 f4 01 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 02 00');
-                    $file->unknownblock(2);
-                    $file->assertEqualHex('00 00 00 01 00 00 00 00 00 00 00 00 00 ff ff ff ff ff ff ff ff ff ff ff ff 0c 75 6e 6b 6e 6f 77 6e 20 6e 61 6d 65 ff ff ff ff');
-                    break;
-                default:
-                    echo $file->hexahead(20000),PHP_EOL;
-                    throw new LogicException('unknown '.$ammoStructType);
-            }
+
+            $fnAmmoInnerBoxParser($ammoStructType);
 
             if (isset($ammunition[ $ammoObjectId ])) {
                 echo 'found '.$ammoObjectId.' "'.$ammunition[ $ammoObjectId ].'" (struct '.$ammoStructType.')'.PHP_EOL;
@@ -771,7 +782,7 @@ $failed = [];
 $testcases = [
     'ak74x3.mis',
     'middlebox3_empty.mis',
-    //'testmis/middlebox3_ak74x3_each.mis'
+    'middlebox3_ak74x3_each.mis'
 ];
 foreach (glob('testmis/*.mis') as $file) {
     ++$count;
