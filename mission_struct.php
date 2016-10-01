@@ -362,7 +362,7 @@ function testread($filename) {
     //echo $file->hexahead($file->getMaxPosition() - $file->getPosition() - 172),PHP_EOL;
     $unitInnerStructId = 0;
     for ($objectStructCounter = 0; $objectStructCounter < $objectsCount; ++$objectStructCounter) {
-        //echo 'start with '. $file->hexahead(100),PHP_EOL;
+        //echo 'start with '. $file->hexahead(1000),PHP_EOL;
         $objectTypeId = $file->int32();
         $objectUid = $file->int32(); // какое-то числительное int32, по-видимому на него ссылаются дальше
         $position1 = $file->float();
@@ -399,34 +399,40 @@ function testread($filename) {
             $file->assertEqualHex('00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00'); // ahead assert
             continue;
         }
-        echo $file->hexahead(8),PHP_EOL;
+        //echo $file->hexahead(8),PHP_EOL;
         $file->unknownblock(8);
-        if (in_array($objectTypeId, [2001, 2007, 2037])) {
+        if (in_array($objectTypeId, [2001, 2007, 2037, 2033])) {
             if ($objectTypeId == 2007) {
                 // хак лежащей на земле аммуниции (алюминиевый чумадан)
                 $file->assertEqualHex('e0 00 00 00');
                 $file->unknownblock(1);
                 $file->assertEqualHex('00 00 00 00 ff ff ff ff 01 00 00 00 00 00 00 00 00 00');
-                continue;
             } else {
                 // ручное оружие (ак74)
                 $equipId = $file->int32();
                 assertEquals($objectUid, $file->int32());
                 $file->assertEqualHex('00');
                 $file->unknownblock(4);
-                if ($objectTypeId == 2001) {
-                    $file->assertEqualHex('01 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 f4 01 00 00');
-                    $file->unknownblock(24);
-                    $file->assertEqualHex('00 00 00 00 00 00 00 00 00 ff ff ff ff ff ff ff ff ff ff ff ff 0c 75 6e 6b 6e 6f 77 6e 20 6e 61 6d 65 ff ff ff ff 00 00 00 00 00 00 00 00 00');
+                switch ($objectTypeId) {
+                    case 2001:
+                        $file->assertEqualHex('01 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 f4 01 00 00');
+                        $file->unknownblock(24);
+                        $file->assertEqualHex('00 00 00 00 00 00 00 00 00 ff ff ff ff ff ff ff ff ff ff ff ff 0c 75 6e 6b 6e 6f 77 6e 20 6e 61 6d 65 ff ff ff ff 00 00 00 00 00 00 00 00 00');
+                        break;
+                    case 2037:
+                        // ползучий мин
+                        $file->assertEqualHex('01 00 00 00 00 00');
+                        $file->unknownblock(4);
+                        $file->assertEqualHex('00 ff ff ff ff 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00');
+                        break;
+                    case 2033:
+                        $file->assertEqualHex('01 00 00 00 00 00 00 00 ed 3e 00 00 00 00 00 00 00 00');
+                        break;
+                    default:
+                        throw new \LogicException('unknown struct for '.$objectTypeId);
                 }
-                if ($objectTypeId == 2037) {
-                    // ползучий мин
-                    $file->assertEqualHex('01 00 00 00 00 00');
-                    $file->unknownblock(4);
-                    $file->assertEqualHex('00 ff ff ff ff 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00');
-                }
-                continue;
             }
+            continue;
         }
 
         $file->assertEqualHex('00 00 00 00 00 00 00 00 00');
@@ -757,7 +763,11 @@ function testread($filename) {
 
 $count = 0;
 $failed = [];
-$testcases = ['ak74x3.mis', 'al_case_x5.mis', 'pols_mine_x4.mis'];
+$testcases = [
+    'ak74x3.mis',
+    'middlebox3_empty.mis',
+    //'testmis/middlebox3_ak74x3_each.mis'
+];
 foreach (glob('testmis/*.mis') as $file) {
     ++$count;
     try {
