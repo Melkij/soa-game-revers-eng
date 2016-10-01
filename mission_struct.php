@@ -168,6 +168,7 @@ function testread($filename) {
         225 => 'взрывчатка',
         226 => 'аптечка',
         227 => 'компьютерный чип',
+        235 => 'ползучий мин', // не уверен
         237 => 'приманка для ползучих мин',
         238 => 'целеуказатель сброса бомбы',
         251 => 'чип слежения за випом из 7 миссии',
@@ -398,13 +399,34 @@ function testread($filename) {
             $file->assertEqualHex('00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00'); // ahead assert
             continue;
         }
+        echo $file->hexahead(8),PHP_EOL;
         $file->unknownblock(8);
-        if ($file->hexahead(4) == 'e0 00 00 00') {
-            // хак лежащей на земле аммуниции (алюминиевый чумадан)
-            $file->assertEqualHex('e0 00 00 00');
-            $file->unknownblock(1);
-            $file->assertEqualHex('00 00 00 00 ff ff ff ff 01 00 00 00 00 00 00 00 00 00');
-            continue;
+        if (in_array($objectTypeId, [2001, 2007, 2037])) {
+            if ($objectTypeId == 2007) {
+                // хак лежащей на земле аммуниции (алюминиевый чумадан)
+                $file->assertEqualHex('e0 00 00 00');
+                $file->unknownblock(1);
+                $file->assertEqualHex('00 00 00 00 ff ff ff ff 01 00 00 00 00 00 00 00 00 00');
+                continue;
+            } else {
+                // ручное оружие (ак74)
+                $equipId = $file->int32();
+                assertEquals($objectUid, $file->int32());
+                $file->assertEqualHex('00');
+                $file->unknownblock(4);
+                if ($objectTypeId == 2001) {
+                    $file->assertEqualHex('01 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 f4 01 00 00');
+                    $file->unknownblock(24);
+                    $file->assertEqualHex('00 00 00 00 00 00 00 00 00 ff ff ff ff ff ff ff ff ff ff ff ff 0c 75 6e 6b 6e 6f 77 6e 20 6e 61 6d 65 ff ff ff ff 00 00 00 00 00 00 00 00 00');
+                }
+                if ($objectTypeId == 2037) {
+                    // ползучий мин
+                    $file->assertEqualHex('01 00 00 00 00 00');
+                    $file->unknownblock(4);
+                    $file->assertEqualHex('00 ff ff ff ff 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00');
+                }
+                continue;
+            }
         }
 
         $file->assertEqualHex('00 00 00 00 00 00 00 00 00');
@@ -735,17 +757,22 @@ function testread($filename) {
 
 $count = 0;
 $failed = [];
+$testcases = ['ak74x3.mis', 'al_case_x5.mis', 'pols_mine_x4.mis'];
 foreach (glob('testmis/*.mis') as $file) {
     ++$count;
     try {
         ob_start();
         testread($file);
-        echo PHP_EOL,PHP_EOL;
-        echo ob_get_clean();
     } catch (Exception $e) {
-        echo ob_get_clean();
         $failed[] = $file;
-        echo 'failed: ' . $e,PHP_EOL,PHP_EOL;
+        echo 'failed: ' . $e,PHP_EOL;
+    } finally {
+        echo PHP_EOL,PHP_EOL;
+        if (in_array(basename($file), $testcases)) {
+            echo ob_get_clean();
+        } else {
+            ob_clean();
+        }
     }
 }
 echo $count . ' total, '. ($count - count($failed)) .' success, ', count($failed) . ' failed. Failed files:',PHP_EOL;
