@@ -232,13 +232,16 @@ function testread($filename) {
     echo basename($filename),PHP_EOL;
     $file = new binaryFile($filename);
 
-    $fnAmmoInnerBoxParser = function($ammoStructType) use($file) {
+    $fnAmmoStruct4Parser = function() use($file) {
+        // боеприпасы, для людей и для техники
+        $file->assertEqualHex('00 0e 00 0d 00 01');
+        $ammoSize = $file->int32(); // число боеприпасов, т.е. например номинальные 250 для 14,5мм ленты
+        $file->assertEqualHex('00 01');
+    };
+    $fnAmmoInnerBoxParser = function($ammoStructType) use($file, $fnAmmoStruct4Parser) {
         switch ($ammoStructType) {
             case 4:
-                // боеприпасы, для людей и для техники
-                $file->assertEqualHex('00 0e 00 0d 00 01');
-                $ammoSize = $file->int32(); // число боеприпасов, т.е. например номинальные 250 для 14,5мм ленты
-                $file->assertEqualHex('00 01');
+                $fnAmmoStruct4Parser();
                 break;
             case 1:
                 // всякая хрень вроде чумодана
@@ -246,16 +249,13 @@ function testread($filename) {
                 break;
             case 2:
                 // человеческое оружие
-                $knownNext = [
+                $file->assertEqualHexAny(
                     '00 0e 00 0d 00', // этот блок в нескольких видах явным образом повторяется. Может быть, им рулится вес/объём одного элемента для посчёта занятости слота машины/человека?
-                    '00 ff ff ff ff',
-                ];
-                foreach ($knownNext as $hex) {
-                    if ($file->hexahead(5) == $hex) {
-                        $file->assertEqualHex($hex);
-                    }
-                }
-                $file->assertEqualHex('01 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 f4 01 00 00 40 00 41 00 42 00 41 00 47 00 46 00 00 00 00 00 4a 00 49 00 00 00 4a 01 00 00 00 00 00 00 00 00 00 ff ff ff ff ff ff ff ff ff ff ff ff 0c 75 6e 6b 6e 6f 77 6e 20 6e 61 6d 65 ff ff ff ff');
+                    '00 ff ff ff ff'
+                );
+                $file->assertEqualHex('01 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 f4 01 00 00 40 00 41 00 42 00 41 00 47 00 46 00 00 00 00 00 4a 00 49 00 00 00 4a');
+                $file->unknownblock(1);
+                $file->assertEqualHex('00 00 00 00 00 00 00 00 00 ff ff ff ff ff ff ff ff ff ff ff ff 0c 75 6e 6b 6e 6f 77 6e 20 6e 61 6d 65 ff ff ff ff');
                 break;
             case 8:
                 $file->assertEqualHex('00 0e 00 0d 00 01');
@@ -268,15 +268,10 @@ function testread($filename) {
                 }
                 break;
             case 34:
-                $knownNext = [
-                    '00 0e 00 0d 00',
-                    '00 ff ff ff ff',
-                ];
-                foreach ($knownNext as $hex) {
-                    if ($file->hexahead(5) == $hex) {
-                        $file->assertEqualHex($hex);
-                    }
-                }
+                $file->assertEqualHexAny(
+                    '00 0e 00 0d 00', // этот блок в нескольких видах явным образом повторяется. Может быть, им рулится вес/объём одного элемента для посчёта занятости слота машины/человека?
+                    '00 ff ff ff ff'
+                );
                 $file->assertEqualHex('01 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 f4 01 00 00 40 00 41 00 42 00 41 00 47 00 46 00 00 00 00 00 4a 00 49 00 00 00 4a 01 04 00 00 00');
                 $file->unknownblock(5);
                 $file->assertEqualHex('00 00 00 00 0e 00 0d 00 01 01 00 00 00 00 01 00 00 00 00 00 ff ff ff ff ff ff ff ff ff ff ff ff 0c 75 6e 6b 6e 6f 77 6e 20 6e 61 6d 65 ff ff ff ff');
@@ -623,6 +618,8 @@ function testread($filename) {
             }
         }
 
+        $file->assertEqualHex('02 00 00 00');
+
         switch ($nextStructType) {
             case '1e 00 00 00':
                 // что-то не так со всеми 3 самолётами, после них ещё 5 байт нулей потеряшек
@@ -633,7 +630,7 @@ function testread($filename) {
                     echo 'Unknown unit type '.$objectTypeId.PHP_EOL;
                 }
 
-                $file->assertEqualHex('02 00 00 00 00 00 00 00 80 bf 00 00 80 bf 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00');
+                $file->assertEqualHex('00 00 00 00 80 bf 00 00 80 bf 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00');
                 $file->unknownblock(1);
                 $file->assertEqualHex('00 00 80 bf 00 00 80 bf');
                 $file->unknownblock(24);
@@ -662,7 +659,6 @@ function testread($filename) {
                 break;
             case '0a 00 00 00':
                 echo 'human type '.$objectTypeId,PHP_EOL;
-                $file->assertEqualHex('02 00 00 00');
                 $humanName = $file->utf8Text($file->int8());
                 echo $humanName,PHP_EOL;
                 $inUnit = $file->int8();
@@ -684,18 +680,76 @@ function testread($filename) {
                 $file->assertEqualHex('00 00 00 00 00 00 00');
                 $file->unknownblock(2);
                 $file->assertEqualHex('00 00 01 00 00 00 00 00 00 00 00 00 00 00');
-                $blockCount = $file->int32();
-                if ($blockCount == 0) {
-                    // штатное значение без снаряжения
-                } elseif ($blockCount == 8) {
-                    $file->unknownblock(18);
-                } else {
-                    throw new LogicException('unknown value '.$blockCount);
+                // маркер принадлежности к команде должен быть до этого момента, дальше свою-чужой бинарно идинтичны
+                //echo $file->hexahead($file->getMaxPosition()-$file->getPosition() - 172);
+
+                $armorStructType = $file->int32();
+                if ($armorStructType != 0) {
+                    if ($armorStructType == 8) {
+                        // броник
+                        $ammoObjectId = $file->int32(); // тип объекта
+                        $ammoRelationObjectId = $file->int32(); // id, на который потом ссылаются
+                        $fnAmmoInnerBoxParser($armorStructType);
+                        if (isset($ammunition[ $ammoObjectId ])) {
+                            echo 'found '.$ammoObjectId.' "'.$ammunition[ $ammoObjectId ].'"'.PHP_EOL;
+                        } else {
+                            echo 'found unknown ammunition '.$ammoObjectId.PHP_EOL;
+                        }
+                    } else {
+                        throw new \LogicException('impossible armor struct id '.$armorStructType);
+                    }
                 }
-                $file->unknownblock(8);
-                if ($file->hexahead(5)!= 'ff ff ff ff 03') {
-                    $file->unknownblock(14); // пнв,бинокль
+                $binokleStructType = $file->int32();
+                if ($binokleStructType != 0) {
+                    if ($binokleStructType == 1) {
+                        // бинокля или пнв
+                        $ammoObjectId = $file->int32(); // тип объекта
+                        $ammoRelationObjectId = $file->int32(); // id, на который потом ссылаются
+                        $fnAmmoInnerBoxParser($binokleStructType);
+                        if (isset($ammunition[ $ammoObjectId ])) {
+                            echo 'found '.$ammoObjectId.' "'.$ammunition[ $ammoObjectId ].'"'.PHP_EOL;
+                        } else {
+                            echo 'found unknown ammunition '.$ammoObjectId.PHP_EOL;
+                        }
+                    } else {
+                        throw new \LogicException('impossible binokle struct id '.$binokleStructType);
+                    }
                 }
+
+                $weaponStructType = $file->int32();
+                if ($weaponStructType != 0) {
+                    if ($weaponStructType == 2 or $weaponStructType == 34) {
+                        // оружие или граната в руках
+                        // по мотивам fnAmmoInnerBoxParser, но различается окончание
+                        $ammoObjectId = $file->int32(); // тип объекта
+                        $ammoRelationObjectId = $file->int32(); // id, на который потом ссылаются
+                        if (isset($ammunition[ $ammoObjectId ])) {
+                            echo 'found '.$ammoObjectId.' "'.$ammunition[ $ammoObjectId ].'"'.PHP_EOL;
+                        } else {
+                            echo 'found unknown ammunition '.$ammoObjectId.PHP_EOL;
+                        }
+                        $file->assertEqualHexAny(
+                            '00 0e 00 0d 00', // этот блок в нескольких видах явным образом повторяется. Может быть, им рулится вес/объём одного элемента для посчёта занятости слота машины/человека?
+                            '00 ff ff ff ff',
+                            '00 01 00 00 00'
+                        );
+                        $file->assertEqualHex('01 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00');
+                        $file->assertEqualHex('f4 01 00 00 40 00 41 00 42 00 41 00 47 00 46 00 00 00 00 00 4a 00 49 00 00 00 4a');
+                        $file->assertEqualHexAny('00', '01');
+                        $innerAmmoStruct = $file->int32();
+                        if ($innerAmmoStruct == 4) {
+                            $ammoObjectId = $file->int32(); // тип объекта
+                            $ammoRelationObjectId = $file->int32(); // id, на который потом ссылаются в описании багажника
+                            $fnAmmoStruct4Parser();
+                        } elseif ($innerAmmoStruct != 0) {
+                            throw new \LogicException('unknown inner struct '.$innerAmmoStruct);
+                        }
+                        $file->assertEqualHex('00 00 00 00 00 02 00 00 00 02 00 00 00 01 00 00 00 0c d0 90 d0 bb d0 b5 d0 bd d0 ba d0 b0 04 00 00 00');
+                    } else {
+                        throw new \LogicException('impossible weapon struct id '.$weaponStructType);
+                    }
+                }
+
                 $file->assertEqualHex('ff ff ff ff 03 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00');
                 $currentLevel = $file->int32();
                 $killsCount = $file->int32(); // удвоенное число необходимых убийств для этого уровня. Возможно, убитый человек +2, животное +1
@@ -728,7 +782,10 @@ function testread($filename) {
                 $file->unknownblock(1);
                 $file->assertEqualHex('0b 00 00');
                 $marker = $file->int8();
-                if ($marker == 1 and 3002 == $objectTypeId) {
+                if ($marker == 1) {
+                    if (3002 != $objectTypeId) {
+                        throw new LogicException('strange marker not knight '.$marker);
+                    }
                     // рыцарь
                     $file->assertEqualHex('00 00 80 3e 00 00 00 00 00 ff ff ff ff 00 00');
                 } elseif ($marker != 0) {
@@ -802,10 +859,13 @@ function testread($filename) {
 $count = 0;
 $failed = [];
 $testcases = [
+    'female_enemy_empty.mis',
     'female_empty.mis',
-    'female_6_inv_3ak_ammo.mis',
     'female_7_inv_3ak_ammo_light_armor.mis',
     'female_8_inv_3ak_ammo_binokle.mis',
+    'female_enemy_ak74.mis',
+    'female_enemy_berett.mis',
+    'female_enemy_granate.mis',
 ];
 foreach (glob('testmis/*.mis') as $file) {
     ++$count;
@@ -813,7 +873,7 @@ foreach (glob('testmis/*.mis') as $file) {
         ob_start();
         testread($file);
     } catch (Exception $e) {
-        $failed[] = $file;
+        $failed[] = basename($file);
         echo 'failed: ' . $e,PHP_EOL;
     } finally {
         echo PHP_EOL,PHP_EOL;
