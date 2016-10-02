@@ -755,14 +755,20 @@ function testread($filename) {
                             throw new \LogicException('unknown inner struct '.$innerAmmoStruct);
                         }
                         // вот этот хвост иной здесь, относительно fnAmmoInnerBoxParser
-                        if (3002 == $objectTypeId) {
-                            // рыцарь
-                            $file->assertEqualHex('00 00 00 00 00 07 00 00 00 07 00 00 00 01 00 00 00');
-                        } else {
-                            $file->assertEqualHex('00 00 00 00 00 02 00 00 00 02 00 00 00 01 00 00 00');
+                        switch ($objectTypeId) {
+                            case 3002:
+                                // рыцарь
+                                $file->assertEqualHex('00 00 00 00 00 07 00 00 00 07 00 00 00 01 00 00 00');
+                                break;
+                            case 3003:
+                                // нитро
+                                $file->assertEqualHex('00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00');
+                                break;
+                            default:
+                                $file->assertEqualHex('00 00 00 00 00 02 00 00 00 02 00 00 00 01 00 00 00');
                         }
                         $someTitle = $file->utf8Text($file->int8());
-                        echo $someTitle, PHP_EOL;
+                        assertEquals($humanName, $someTitle); // ??? реально продублировано имя человека в оружии
                         $file->assertEqualHex('04 00 00 00');
                     } else {
                         throw new \LogicException('impossible weapon struct id '.$weaponStructType);
@@ -883,6 +889,7 @@ $testcases = [
     'human_nitro_3_6bolts,ak74.mis',
     'human_nitro_3_6bolts.mis',
     'human_nitro_empty.mis',
+    'enemy_mutant,nitro,knight_same_skin_equip.mis',
 ];
 foreach (glob('testmis/*.mis') as $file) {
     ++$count;
