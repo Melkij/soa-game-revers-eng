@@ -155,6 +155,9 @@ function testread($filename) {
         116 => 'арбалет',
         117 => 'дробовик',
 
+        39 => 'ракетная установка рыцаря',
+        230 => 'пулемёт рыцаря',
+
         // struct 4
         1 => 'лента 7,62',
         21 => 'обойма ак74',
@@ -174,6 +177,9 @@ function testread($filename) {
         35 => '2c3 осветительные',
         36 => '2c3 минные',
         43 => 'ракета TOW',
+
+        60 => 'ракеты рыцаря',
+        236 => 'пулемётная лента рыцаря',
 
         //struct 8
         216 => 'лёгкий бронежилет',
@@ -427,7 +433,9 @@ function testread($filename) {
         for ($i = 0; $i < $seekerInventoryCount; ++$i) {
             $file->unknownblock(5*4); // возможно, objectId, objectId, min, max, ещё какое-то число
         }
-        $file->assertEqualHex('01 01 00 00 00 00 00 00 00 00');
+        $file->assertEqualHex('01 01');
+        $file->unknownblock(1); // отзывается на вооружённых рыцарей? diff female_enemy_knight_skin.mis female_enemy_knight_empty.mis
+        $file->assertEqualHex('00 00 00 00 00 00 00');
     }
 
     $file->assertEqualHex('63 00 00 00');
@@ -718,7 +726,7 @@ function testread($filename) {
 
                 $weaponStructType = $file->int32();
                 if ($weaponStructType != 0) {
-                    if ($weaponStructType == 2 or $weaponStructType == 34) {
+                    if (in_array($weaponStructType, [2, 34, 66])) {
                         // оружие или граната в руках
                         // по мотивам fnAmmoInnerBoxParser, но различается окончание
                         $ammoObjectId = $file->int32(); // тип объекта
@@ -731,7 +739,8 @@ function testread($filename) {
                         $file->assertEqualHexAny(
                             '00 0e 00 0d 00', // этот блок в нескольких видах явным образом повторяется. Может быть, им рулится вес/объём одного элемента для посчёта занятости слота машины/человека?
                             '00 ff ff ff ff',
-                            '00 01 00 00 00'
+                            '00 01 00 00 00',
+                            '00 ff 01 01 01'
                         );
                         $file->assertEqualHex('01 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00');
                         $file->assertEqualHex('f4 01 00 00 40 00 41 00 42 00 41 00 47 00 46 00 00 00 00 00 4a 00 49 00 00 00 4a');
@@ -744,7 +753,16 @@ function testread($filename) {
                         } elseif ($innerAmmoStruct != 0) {
                             throw new \LogicException('unknown inner struct '.$innerAmmoStruct);
                         }
-                        $file->assertEqualHex('00 00 00 00 00 02 00 00 00 02 00 00 00 01 00 00 00 0c d0 90 d0 bb d0 b5 d0 bd d0 ba d0 b0 04 00 00 00');
+                        // вот этот хвост иной здесь, относительно fnAmmoInnerBoxParser
+                        if (3002 == $objectTypeId) {
+                            // рыцарь
+                            $file->assertEqualHex('00 00 00 00 00 07 00 00 00 07 00 00 00 01 00 00 00');
+                        } else {
+                            $file->assertEqualHex('00 00 00 00 00 02 00 00 00 02 00 00 00 01 00 00 00');
+                        }
+                        $someTitle = $file->utf8Text($file->int8());
+                        echo $someTitle, PHP_EOL;
+                        $file->assertEqualHex('04 00 00 00');
                     } else {
                         throw new \LogicException('impossible weapon struct id '.$weaponStructType);
                     }
@@ -859,13 +877,13 @@ function testread($filename) {
 $count = 0;
 $failed = [];
 $testcases = [
-    'female_enemy_empty.mis',
-    'female_empty.mis',
-    'female_7_inv_3ak_ammo_light_armor.mis',
-    'female_8_inv_3ak_ammo_binokle.mis',
-    'female_enemy_ak74.mis',
-    'female_enemy_berett.mis',
-    'female_enemy_granate.mis',
+    'enemy_mutant,nitro,knight_same_skin_equip.mis',
+    'female_enemy_knight_empty.mis',
+    'female_enemy_knight_launcher_ammo.mis',
+    'female_enemy_knight_launcher_no.mis',
+    'female_enemy_knight_rotor_ammo.mis',
+    'female_enemy_knight_rotor_no_ammo.mis',
+    'female_enemy_knight_skin.mis',
 ];
 foreach (glob('testmis/*.mis') as $file) {
     ++$count;
