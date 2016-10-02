@@ -473,7 +473,8 @@ function testread($filename) {
         if ((
             ($objectTypeId >= 1021 and $objectTypeId <= 1026) // камни
             or $objectTypeId == 1030 // сосна, деревья в общем тут же должны быть
-            ) and $file->hexahead(4) == '00 00 00 00') {
+            or ($objectTypeId >= 1000 and $objectTypeId < 1100)
+            )) {
             // хак камней
             $file->assertEqualHex('00 00 00 00'); // ahead assert. Ну и всё тут
             continue;
@@ -877,13 +878,11 @@ function testread($filename) {
 $count = 0;
 $failed = [];
 $testcases = [
-    'enemy_mutant,nitro,knight_same_skin_equip.mis',
-    'female_enemy_knight_empty.mis',
-    'female_enemy_knight_launcher_ammo.mis',
-    'female_enemy_knight_launcher_no.mis',
-    'female_enemy_knight_rotor_ammo.mis',
-    'female_enemy_knight_rotor_no_ammo.mis',
-    'female_enemy_knight_skin.mis',
+    'human_nitro_3_6bolts,ak74,heavy,binokle.mis',
+    'human_nitro_3_6bolts,ak74,heavy.mis',
+    'human_nitro_3_6bolts,ak74.mis',
+    'human_nitro_3_6bolts.mis',
+    'human_nitro_empty.mis',
 ];
 foreach (glob('testmis/*.mis') as $file) {
     ++$count;
