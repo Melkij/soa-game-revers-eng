@@ -95,7 +95,7 @@ class binaryFile
             }
 
             if ($eq === $infile) {
-                return;
+                return $infile;
             }
         }
 
@@ -586,15 +586,44 @@ function testread($filename) {
         $file->unknownblock(1);
         $file->assertEqualHex('00 00 00 00 00 00 00 00 00');
 
-        if ($file->hexahead(4) == '01 00 00 00') {
-            $file->assertEqualHex('01 00 00 00 01 00 00 00 00 00 00 00 02 00 00 00 00 00 00 00');
+        $nextStructType = $file->assertEqualHexAny(
+            '01 00 00 00', //животные?
+            '1e 00 00 00', // машинки
+            '0a 00 00 00' // людишки
+        );
+
+        if ('01 00 00 00' == $nextStructType) {
+            $file->assertEqualHex('01 00 00 00 00 00 00 00 02 00 00 00 00 00 00 00');
             if (! in_array($objectTypeId, [4009, 4010])) {
+                // не птычки
                 $file->assertEqualHex('00 00 00 00 00');
             }
             continue;
         }
 
-        switch ($file->hexahead(4)) {
+        $ammoSlotsCount = $file->int32();
+        echo 'ammo slots count '.$ammoSlotsCount,PHP_EOL;
+        for ($slot = 0; $slot < $ammoSlotsCount; ++$slot) {
+            $entryCount = $file->int32();
+            $objInSlotCount = 0;
+            $objInSlotType = null;
+            for ($entry = 0; $entry < $entryCount; ++$entry) {
+                $ammoEntryId = $file->int32();
+                if (is_null($objInSlotType)) {
+                    $objInSlotType = $ammoDict[ $ammoEntryId ]['id'];
+                } elseif ($ammoDict[ $ammoEntryId ]['id'] !== $objInSlotType) {
+                    throw new LogicException('one slot can containts only one item type');
+                }
+                ++$objInSlotCount;
+            }
+            if (is_null($objInSlotType)) {
+                echo 'ammo slot '.$slot . ' empty', PHP_EOL;
+            } else {
+                echo 'ammo slot '.$slot . ' contants '.$objInSlotCount.' items type '.$objInSlotType, PHP_EOL;
+            }
+        }
+
+        switch ($nextStructType) {
             case '1e 00 00 00':
                 // что-то не так со всеми 3 самолётами, после них ещё 5 байт нулей потеряшек
                 // байк, 2c3, btr80 парсятся
@@ -603,28 +632,7 @@ function testread($filename) {
                 } else {
                     echo 'Unknown unit type '.$objectTypeId.PHP_EOL;
                 }
-                $file->assertEqualHex('1e 00 00 00');
-                $ammoSlotsCount = $file->int32();
-    echo 'ammo slots count '.$ammoSlotsCount,PHP_EOL;
-                for ($slot = 0; $slot < $ammoSlotsCount; ++$slot) {
-                    $entryCount = $file->int32();
-                    $objInSlotCount = 0;
-                    $objInSlotType = null;
-                    for ($entry = 0; $entry < $entryCount; ++$entry) {
-                        $ammoEntryId = $file->int32();
-                        if (is_null($objInSlotType)) {
-                            $objInSlotType = $ammoDict[ $ammoEntryId ]['id'];
-                        } elseif ($ammoDict[ $ammoEntryId ]['id'] !== $objInSlotType) {
-                            throw new LogicException('one slot can containts only one item type');
-                        }
-                        ++$objInSlotCount;
-                    }
-    if (is_null($objInSlotType)) {
-        echo 'ammo slot '.$slot . ' empty', PHP_EOL;
-    } else {
-        echo 'ammo slot '.$slot . ' contants '.$objInSlotCount.' items type '.$objInSlotType, PHP_EOL;
-    }
-                }
+
                 $file->assertEqualHex('02 00 00 00 00 00 00 00 80 bf 00 00 80 bf 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00');
                 $file->unknownblock(1);
                 $file->assertEqualHex('00 00 80 bf 00 00 80 bf');
@@ -654,12 +662,6 @@ function testread($filename) {
                 break;
             case '0a 00 00 00':
                 echo 'human type '.$objectTypeId,PHP_EOL;
-                // люди
-                $file->assertEqualHex('0a 00 00 00');
-                $blocksCount = $file->int32();
-                for ($i = 0; $i < $blocksCount; ++$i) {
-                    $file->assertEqualHex('00 00 00 00');
-                }
                 $file->assertEqualHex('02 00 00 00');
                 $humanName = $file->utf8Text($file->int8());
                 echo $humanName,PHP_EOL;
@@ -800,7 +802,10 @@ function testread($filename) {
 $count = 0;
 $failed = [];
 $testcases = [
-    'enemy_mutant,nitro,knight_same_skin_equip.mis'
+    'female_empty.mis',
+    'female_6_inv_3ak_ammo.mis',
+    'female_7_inv_3ak_ammo_light_armor.mis',
+    'female_8_inv_3ak_ammo_binokle.mis',
 ];
 foreach (glob('testmis/*.mis') as $file) {
     ++$count;
