@@ -211,7 +211,8 @@ function testread($filename) {
         59 => 'ручная пусковая установка SA-7',
         252 => 'ручной гранатомёт M79',
     ];
-    $humansType = [
+    $objectTypes = [
+        // человечеки
         3000 => 'мужчина',
         3001 => 'женщина',
         3002 => 'рыцарь',
@@ -220,8 +221,8 @@ function testread($filename) {
         3005 => 'ребёнок девочка',
         3006 => 'монах',
         3007 => 'мутировавший организм',
-    ];
-    $animals = [
+
+        // животинки
         4000 => 'медведь',
         4001 => 'тигр',
         4002 => 'волк',
@@ -261,7 +262,10 @@ function testread($filename) {
                 );
                 $file->assertEqualHex('01 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 f4 01 00 00 40 00 41 00 42 00 41 00 47 00 46 00 00 00 00 00 4a 00 49 00 00 00 4a');
                 $file->unknownblock(1);
-                $file->assertEqualHex('00 00 00 00 00 00 00 00 00 ff ff ff ff ff ff ff ff ff ff ff ff 0c 75 6e 6b 6e 6f 77 6e 20 6e 61 6d 65 ff ff ff ff');
+                $file->assertEqualHex('00 00 00 00 00 00 00 00 00 ff ff ff ff ff ff ff ff ff ff ff ff');
+                $textLenght = $file->int8();
+                $text = $file->utf8Text($textLenght);
+                $file->assertEqualHex('ff ff ff ff');
                 break;
             case 8:
                 $file->assertEqualHex('00 0e 00 0d 00 01');
@@ -469,7 +473,7 @@ function testread($filename) {
         $name = $file->utf8Text($nameLen);
         $file->assertEqualHex('ff ff ff ff 00 00 00 00 00 00 00 00');
 
-        echo 'Object type '.$objectTypeId . ' uid '.$objectUid.PHP_EOL;
+        echo 'Object type '.$objectTypeId . (isset($objectTypes[$objectTypeId]) ? ' "'.$objectTypes[$objectTypeId].'"':'')  . ' uid '.$objectUid.PHP_EOL;
         if ((
             ($objectTypeId >= 1021 and $objectTypeId <= 1026) // камни
             or $objectTypeId == 1030 // сосна, деревья в общем тут же должны быть
@@ -667,6 +671,7 @@ function testread($filename) {
                 }
                 break;
             case '0a 00 00 00':
+                //echo $file->hexahead($file->getMaxPosition());
                 echo 'human type '.$objectTypeId,PHP_EOL;
                 $humanName = $file->utf8Text($file->int8());
                 echo $humanName,PHP_EOL;
@@ -745,7 +750,11 @@ function testread($filename) {
                             '00 00 00 00 00'
                         );
                         $file->assertEqualHex('01 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00');
-                        $file->assertEqualHex('f4 01 00 00 40 00 41 00 42 00 41 00 47 00 46 00 00 00 00 00 4a 00 49 00 00 00 4a');
+                        $file->assertEqualHex('f4 01 00 00');
+                        $file->assertEqualHexAny(
+                            '40 00 41 00 42 00 41 00 47 00 46 00 00 00 00 00 4a 00 49 00 00 00 4a',
+                            'ff 01 01 01 ff 01 01 01 ff 01 01 01 00 00 00 00 ff 01 01 01 00 00 01'
+                        );
                         $file->assertEqualHexAny('00', '01');
                         $innerAmmoStruct = $file->int32();
                         if ($innerAmmoStruct == 4) {
@@ -763,7 +772,10 @@ function testread($filename) {
                                 break;
                             case 3003:
                                 // нитро
-                                $file->assertEqualHex('00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00');
+                                $file->assertEqualHexAny(
+                                    '00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00',
+                                    '00 00 00 00 00 04 00 00 00 04 00 00 00 01 00 00 00'
+                                );
                                 break;
                             default:
                                 $file->assertEqualHex('00 00 00 00 00 02 00 00 00 02 00 00 00 01 00 00 00');
@@ -885,11 +897,6 @@ function testread($filename) {
 $count = 0;
 $failed = [];
 $testcases = [
-    'human_nitro_3_6bolts,ak74,heavy,binokle.mis',
-    'human_nitro_3_6bolts,ak74,heavy.mis',
-    'human_nitro_3_6bolts,ak74.mis',
-    'human_nitro_3_6bolts.mis',
-    'human_nitro_empty.mis',
     'enemy_mutant,nitro,knight_same_skin_equip.mis',
 ];
 foreach (glob('testmis/*.mis') as $file) {
