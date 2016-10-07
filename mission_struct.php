@@ -363,10 +363,18 @@ function testread($filename) {
 
     // карта высот
     while($entrysize = $file->int32()) {
-        $file->unknownblock($entrysize);
+        //echo $file->hexahead($entrysize),PHP_EOL;
+        // странная структура, не могу уловить смысл значений
+        $file->assertEqualHex('78 da ed');
+        $file->unknownblock($entrysize - 3);
     }
     while($entrysize = $file->int32()) {
-        $file->unknownblock($entrysize);
+        if ($entrysize == 48) {
+            // эта структура статична для такой длины?
+            $file->assertEqualHex('78 da ed c1 31 01 00 00 00 c2 a0 f5 4f 6d 07 6f a0 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 80 d7 00 64 00 00 01');
+        } else {
+            $file->unknownblock($entrysize);
+        }
     }
     $file->assertEqualHex('02 00 00 00');
     $texturesCount = $file->int32();
@@ -903,7 +911,15 @@ function testread($filename) {
 $count = 0;
 $failed = [];
 $testcases = [
-    'enemy_mutant,nitro,knight_same_skin_equip.mis',
+    'empty_5x5_new2.mis',
+    'empty_5x5_new3.mis',
+    'empty_5x5_new.mis',
+    '5x5_top_left.mis',
+    '5x5_top_r.mis',
+    '5x5_bottom_left.mis',
+    '5x5_bottom_r.mis',
+    '5x5_hor_line.mis',
+    '5x5_vert_line.mis',
 ];
 foreach (glob('testmis/*.mis') as $file) {
     ++$count;
