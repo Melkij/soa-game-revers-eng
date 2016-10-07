@@ -365,8 +365,7 @@ function testread($filename) {
     while($entrysize = $file->int32()) {
         //echo $file->hexahead($entrysize),PHP_EOL;
         // странная структура, не могу уловить смысл значений
-        $file->assertEqualHex('78 da ed');
-        $file->unknownblock($entrysize - 3);
+        $file->unknownblock($entrysize);
     }
     while($entrysize = $file->int32()) {
         if ($entrysize == 48) {
@@ -383,7 +382,10 @@ function testread($filename) {
         $pos2 = $file->float();
         $size1 = $file->float();
         $size2 = $file->float();
-        $file->assertEqualHex('00 00 00 00 ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff 2d 00 00 00 00 00 00 00');
+        $file->unknownblock(4); // возможно тут угол поворота текстуры, забыл тестом покрыть
+        $file->assertEqualHex('ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff');
+        $textureId = $file->int32();
+        $file->unknownblock(4); // или тут угол
     }
     $landId = $file->int32();
     $file->assertEqualHex('ff ff ff ff 03 00 00 00');
