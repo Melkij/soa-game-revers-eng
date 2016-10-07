@@ -114,6 +114,12 @@ class binaryFile
             echo $infile,PHP_EOL;
             echo $equals,PHP_EOL;
             echo PHP_EOL;
+
+            $lookAhead = strpos($this->hexahead($this->getMaxPosition() - $this->getPosition()), $equals);
+            if ($lookAhead !== false) {
+                echo 'found in '.(($lookAhead)/3).' bytes later',PHP_EOL;
+            }
+
             throw new LogicException('readed block ' . $infile. ' not match need ' . $equals);
         }
     }
