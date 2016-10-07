@@ -53,6 +53,11 @@ class binaryFile
         return $this->fileSize;
     }
 
+    public function echoAllAhead()
+    {
+        echo $this->hexahead($this->getMaxPosition() - $this->getPosition()).PHP_EOL;
+    }
+
     /**
      * testcase: 99 99 19 3f ~ 0,6
      */
@@ -491,11 +496,11 @@ function testread($filename) {
         //echo $file->hexahead(8),PHP_EOL;
         //$file->unknownblock(8);
         $file->unknownblock(4);
-        $structHex = $file->hexahead(4);
-        if ($structHex == 'ff ff ff ff') {
+        if ($file->hexahead(4) == 'ff ff ff ff') {
             $file->assertEqualHex('ff ff ff ff');
-            // contune later - humans, units
+            // continue later - humans, units
         } else {
+            // всякий хлам на земле
             $structId = $file->int32();
             $equipId = $file->int32();
             assertEquals($objectUid, $file->int32());
@@ -515,6 +520,7 @@ function testread($filename) {
                     $file->assertEqualHex('00 ff ff ff ff 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00');
                     break;
                 case 2033:
+                    // какой-то ящик
                     $file->assertEqualHex('00 00 ed 3e');
                     $inBoxCount = $file->int32();
                     for ($structCounter = 0; $structCounter < $inBoxCount; ++$structCounter) {
