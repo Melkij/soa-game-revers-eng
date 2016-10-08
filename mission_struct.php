@@ -308,7 +308,18 @@ function testread($filename) {
         }
     };
 
-    $file->assertEqualHex('38 f9 b3 0a 62 93 d1 11 9a 2b 08 00 00 30 05 12 0a 00 00 00 02 00 00 00 0a 00 00 00');
+    $file->assertEqualHex('38 f9 b3 0a 62 93 d1 11 9a 2b 08 00 00 30 05 12');
+    $mapVersion = null;
+    if ($file->hexahead(12) == '0a 00 00 00 02 00 00 00 0a 00 00 00') {
+        // версия редактора карты?
+        // игровой редактор оставляет такую метку
+        $file->assertEqualHex('0a 00 00 00 02 00 00 00 0a 00 00 00');
+        $mapVersion = 'current';
+    } else {
+        $file->assertEqualHex('06 00 00 00 02 00 00 00 04 00 00 00');
+        $mapVersion = 'bunker';
+    }
+
     $titleLenght = $file->int8();
     $title = $file->utf8Text($titleLenght);
     $file->assertEqualHex('00');
@@ -317,6 +328,7 @@ function testread($filename) {
 
     $mapwidth = $file->int32();
     $mapheight = $file->int32();
+
     //echo $file->hexahead($file->getMaxPosition() - $file->getPosition() - 172),PHP_EOL;
     /* для 3, 4, 5 (один человек, отстальние ии) и 5 (3 человека, 2 компа) команд соответственно:
     00 00 00 00     01 00 00 00   00        02 00 00 00 00      02 00 00 00 00                                              00 00
@@ -345,25 +357,31 @@ function testread($filename) {
             $file->unknownblock($readAdd);
         }
     }
-    $file->assertEqualHex('00 00');
-    assertEquals($partyCount, $file->int32());
-    for ($partyId = 0; $partyId < $partyCount; ++$partyId) {
-        echo 'party ' .$partyId,PHP_EOL;
-        $seekerInventoryCount = $file->int32();
-        assertEquals($partyId, $file->int32());
-        for ($i = 0; $i < $seekerInventoryCount; ++$i) {
-            $file->unknownblock(5*4); // see later
+
+    if ($mapVersion == 'current') {
+        $file->assertEqualHex('00 00');
+        assertEquals($partyCount, $file->int32());
+        for ($partyId = 0; $partyId < $partyCount; ++$partyId) {
+            echo 'party ' .$partyId,PHP_EOL;
+            $seekerInventoryCount = $file->int32();
+            assertEquals($partyId, $file->int32());
+            for ($i = 0; $i < $seekerInventoryCount; ++$i) {
+                $file->unknownblock(5*4); // see later
+            }
         }
+        $file->assertEqualHex('00');
+
+        $updateTimeStamp = $file->int32();
+        echo date('Y-m-d H:i:s', $updateTimeStamp).PHP_EOL;
+
+        $authorLenght = $file->int8();
+        $descr = $file->utf8Text($authorLenght);
+        $file->assertEqualHex('00 00 00 00');
+    } else {
+        $file->assertEqualHex('00');
     }
-    $file->assertEqualHex('00');
 
-    $updateTimeStamp = $file->int32();
-    echo date('Y-m-d H:i:s', $updateTimeStamp).PHP_EOL;
-
-    $authorLenght = $file->int8();
-    $descr = $file->utf8Text($authorLenght);
-
-    $file->assertEqualHex('00 00 00 00 09 00 00 00');
+    $file->assertEqualHex('09 00 00 00');
     assertEquals($mapwidth, $file->int32());
     assertEquals($mapheight, $file->int32());
 
@@ -398,7 +416,12 @@ function testread($filename) {
         //$file->assertEqualHex('00 00 00 00');
     }
     $landId = $file->int32();
-    $file->assertEqualHex('ff ff ff ff 03 00 00 00');
+    if ($mapVersion == 'current') {
+        $file->assertEqualHex('ff ff ff ff 03 00 00 00');
+    } else {
+        $file->assertEqualHex('ff ff ff ff 02 00 00 00');
+    }
+    //echo $file->hexahead(500), PHP_EOL;
     $editorCam = $file->hexahead(24);
     // где находится камера
     $editorCamPosWestEast = $file->float(); // при движении на запад уменьшается, скорей всего 0 - крайняя западная точка
@@ -408,10 +431,15 @@ function testread($filename) {
     $editorCamViewDirectionX = $file->float(); // явно координаты взгляда, мог напутать x и y
     $editorCamViewDirectionY = $file->float();
     $editorCamViewDirectionZ = $file->float(); // но это точно z
-    $file->unknownblock(8); // неизвестный промежуточный блок
-    $file->assertEqualHex($editorCam); // затем блок данных о камере продублирован
+    $file->unknownblock(4);
+    if ($mapVersion == 'current') {
+        $file->unknownblock(4); // неизвестный промежуточный блок
+        $file->assertEqualHex($editorCam); // затем блок данных о камере продублирован
+    }
     $file->assertEqualHex('00 00 00 00 00 00 00 00');
-    $minimapsize = $file->float(); // множитель масштаба миникарты. Дефолт 00 00 80 3F (т.е. 1), число меньше - карта ближе, больше - дальше
+    if ($mapVersion == 'current') {
+        $minimapsize = $file->float(); // множитель масштаба миникарты. Дефолт 00 00 80 3F (т.е. 1), число меньше - карта ближе, больше - дальше
+    }
     $file->assertEqualHex('05 00 00 00');
     $skies = $file->int32();
     $file->unknownblock(4);
@@ -419,7 +447,11 @@ function testread($filename) {
     $rainPercent = $file->float();
     $temperature = $file->float();
     $file->unknownblock(1);
-    $file->assertEqualHex('00 00 00 00 0c 00 00');
+    if ($mapVersion == 'current') {
+        $file->assertEqualHex('00 00 00 00 0c 00 00');
+    } else {
+        $file->assertEqualHex('00 00 00 00 0b 00 00');
+    }
     $file->assertEqualHex('00');
     $file->unknownblock(4); // скорей всего здесь игровое время +- возможное смещение на 1 байт. 3 байта точно меняются
     $file->assertEqualHex('02 00 00 00');
@@ -468,7 +500,11 @@ function testread($filename) {
         $file->assertEqualHex('00 00 00 00 00 00 00');
     }
 
-    $file->assertEqualHex('63 00 00 00');
+    if ($mapVersion == 'current') {
+        $file->assertEqualHex('63 00 00 00');
+    } else {
+        $file->assertEqualHex('41 00 00 00');
+    }
 
     $ammoDict = []; // словарь припасов в машинах
     // физические объекты на карте, в том числе транспорт
@@ -476,7 +512,7 @@ function testread($filename) {
     //echo $file->hexahead($file->getMaxPosition() - $file->getPosition() - 172),PHP_EOL;
     $unitInnerStructId = 0;
     for ($objectStructCounter = 0; $objectStructCounter < $objectsCount; ++$objectStructCounter) {
-        //echo 'start with '. $file->hexahead(1000),PHP_EOL;
+        //echo 'start with '. $file->hexahead(500),PHP_EOL;
         $objectTypeId = $file->int32();
         $objectUid = $file->int32(); // какое-то числительное int32, по-видимому на него ссылаются дальше
         $position1 = $file->float();
@@ -485,19 +521,26 @@ function testread($filename) {
         $file->unknownblock(4); // 00 00 00 80 для юнитов, 00 00 00 00 для сооружений? нет, не так
         $rotateAngle = $file->float(); // угол поворота?
         $scaleFactor = $file->float(); // размер камней, деревьев. 1 для всех остальных
-        $file->assertEqualHex('01 01 00 00 00 00 16 00 00 00 00 00 00 00');
+        if ($mapVersion == 'current') {
+            $file->assertEqualHex('01 01 00 00 00 00 16 00 00 00 00 00 00 00');
+        } else {
+            $file->assertEqualHex('01 01 00 00 00 00 10 00 00 00 00 00 00 00');
+        }
         $file->unknownblock(1); // тоже поменялось с углом поворота
         $file->assertEqualHex('00 00 00 01');
         $maxhealth = $file->int32();
         $currenthealth = $file->int32();
         $maxarmor = $file->int32();
         $currentarmor = $file->int32();
-        $file->assertEqualHex('ff ff ff ff 00 00 00 00');
-        $file->unknownblock(4); // добавили коров, поплыл байтик
-        $file->assertEqualHex('00 00 80 3f 00 00 00 00 00 00 ff ff ff ff ff ff ff ff ff ff ff ff');
-        $nameLen = $file->int8();
-        $name = $file->utf8Text($nameLen);
-        $file->assertEqualHex('ff ff ff ff 00 00 00 00 00 00 00 00');
+        $file->assertEqualHex('ff ff ff ff');
+        if ($mapVersion == 'current') {
+            $file->assertEqualHex('00 00 00 00');
+            $file->unknownblock(4); // добавили коров, поплыл байтик
+            $file->assertEqualHex('00 00 80 3f 00 00 00 00 00 00 ff ff ff ff ff ff ff ff ff ff ff ff');
+            $nameLen = $file->int8();
+            $name = $file->utf8Text($nameLen);
+            $file->assertEqualHex('ff ff ff ff 00 00 00 00 00 00 00 00');
+        }
 
         echo 'Object type '.$objectTypeId . (isset($objectTypes[$objectTypeId]) ? ' "'.$objectTypes[$objectTypeId].'"':'')  . ' uid '.$objectUid.PHP_EOL;
         if ((
@@ -506,7 +549,11 @@ function testread($filename) {
             or ($objectTypeId >= 1000 and $objectTypeId < 1100)
             )) {
             // хак камней
-            $file->assertEqualHex('00 00 00 00'); // ahead assert. Ну и всё тут
+            if ($mapVersion == 'current') {
+                $file->assertEqualHex('00 00 00 00'); // ahead assert. Ну и всё тут
+            } else {
+                $file->assertEqualHex('00 00 00 00 00 00 00 00 00 00 00 00');
+            }
             continue;
         }
         if ($file->hexahead(16) == '00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00') {
@@ -514,51 +561,55 @@ function testread($filename) {
             $file->assertEqualHex('00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00'); // ahead assert
             continue;
         }
-        //echo $file->hexahead(8),PHP_EOL;
-        //$file->unknownblock(8);
-        $file->unknownblock(4);
-        if ($file->hexahead(4) == 'ff ff ff ff') {
-            $file->assertEqualHex('ff ff ff ff');
-            // continue later - humans, units
-        } else {
-            // всякий хлам на земле
-            $structId = $file->int32();
-            $equipId = $file->int32();
-            assertEquals($objectUid, $file->int32());
-            $file->assertEqualHex('00');
+
+        if ($mapVersion == 'current') {
             $file->unknownblock(4);
-            $file->assertEqualHex('01 00 00 00 00 00');
-            switch ($objectTypeId) {
-                case 2001:
-                    // ручное оружие (ак74)
-                    $file->assertEqualHex('00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 f4 01 00 00');
-                    $file->unknownblock(24);
-                    $file->assertEqualHex('00 00 00 00 00 00 00 00 00 ff ff ff ff ff ff ff ff ff ff ff ff 0c 75 6e 6b 6e 6f 77 6e 20 6e 61 6d 65 ff ff ff ff 00 00 00 00 00');
-                    break;
-                case 2037:
-                    // ползучий мин
-                    $file->unknownblock(4);
-                    $file->assertEqualHex('00 ff ff ff ff 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00');
-                    break;
-                case 2033:
-                    // какой-то ящик
-                    $file->assertEqualHex('00 00 ed 3e');
-                    $inBoxCount = $file->int32();
-                    for ($structCounter = 0; $structCounter < $inBoxCount; ++$structCounter) {
-                        $ammoStructType = $file->int32();
-                        $ammoObjectId = $file->int32(); // тип объекта
-                        $ammoRelationObjectId = $file->int32(); // id, на который потом ссылаются в описании багажника
-                        $fnAmmoInnerBoxParser($ammoStructType);
-                    }
-                    break;
-                case 2007:
-                    // чумадан
-                    break;
-                default:
-                    throw new \LogicException('unknown struct for '.$objectTypeId);
+
+            if ($file->hexahead(4) == 'ff ff ff ff') {
+                $file->assertEqualHex('ff ff ff ff');
+                // continue later - humans, units
+            } else {
+                // всякий хлам на земле
+                $structId = $file->int32();
+                $equipId = $file->int32();
+                assertEquals($objectUid, $file->int32());
+                $file->assertEqualHex('00');
+                $file->unknownblock(4);
+                $file->assertEqualHex('01 00 00 00 00 00');
+                switch ($objectTypeId) {
+                    case 2001:
+                        // ручное оружие (ак74)
+                        $file->assertEqualHex('00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 f4 01 00 00');
+                        $file->unknownblock(24);
+                        $file->assertEqualHex('00 00 00 00 00 00 00 00 00 ff ff ff ff ff ff ff ff ff ff ff ff 0c 75 6e 6b 6e 6f 77 6e 20 6e 61 6d 65 ff ff ff ff 00 00 00 00 00');
+                        break;
+                    case 2037:
+                        // ползучий мин
+                        $file->unknownblock(4);
+                        $file->assertEqualHex('00 ff ff ff ff 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00');
+                        break;
+                    case 2033:
+                        // какой-то ящик
+                        $file->assertEqualHex('00 00 ed 3e');
+                        $inBoxCount = $file->int32();
+                        for ($structCounter = 0; $structCounter < $inBoxCount; ++$structCounter) {
+                            $ammoStructType = $file->int32();
+                            $ammoObjectId = $file->int32(); // тип объекта
+                            $ammoRelationObjectId = $file->int32(); // id, на который потом ссылаются в описании багажника
+                            $fnAmmoInnerBoxParser($ammoStructType);
+                        }
+                        break;
+                    case 2007:
+                        // чумадан
+                        break;
+                    default:
+                        throw new \LogicException('unknown struct for '.$objectTypeId);
+                }
+                $file->assertEqualHex('00 00 00 00');
+                continue;
             }
-            $file->assertEqualHex('00 00 00 00');
-            continue;
+        } else {
+            $file->assertEqualHex('00 00 00 00 00 00 00 00 ff ff ff ff ff ff ff ff');
         }
 
         $file->assertEqualHex('00 00 00 00 00 00 00 00 00');
@@ -619,47 +670,52 @@ function testread($filename) {
 
         $file->unknownblock(2);
         $file->assertEqualHex('ff 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00');
-        $file->unknownblock(1);
-        $file->assertEqualHex('00 00 00 00 00 00 00 00 00');
+        if ($mapVersion == 'current') {
+            $file->unknownblock(1);
+            $file->assertEqualHex('00 00 00 00 00 00 00 00 00');
 
-        $nextStructType = $file->assertEqualHexAny(
-            '01 00 00 00', //животные?
-            '1e 00 00 00', // машинки
-            '0a 00 00 00' // людишки
-        );
+            $nextStructType = $file->assertEqualHexAny(
+                '01 00 00 00', //животные?
+                '1e 00 00 00', // машинки
+                '0a 00 00 00' // людишки
+            );
 
-        if ('01 00 00 00' == $nextStructType) {
-            $file->assertEqualHex('01 00 00 00 00 00 00 00 02 00 00 00 00 00 00 00');
-            if (! in_array($objectTypeId, [4009, 4010])) {
-                // не птычки
-                $file->assertEqualHex('00 00 00 00 00');
-            }
-            continue;
-        }
-
-        $ammoSlotsCount = $file->int32();
-        echo 'ammo slots count '.$ammoSlotsCount,PHP_EOL;
-        for ($slot = 0; $slot < $ammoSlotsCount; ++$slot) {
-            $entryCount = $file->int32();
-            $objInSlotCount = 0;
-            $objInSlotType = null;
-            for ($entry = 0; $entry < $entryCount; ++$entry) {
-                $ammoEntryId = $file->int32();
-                if (is_null($objInSlotType)) {
-                    $objInSlotType = $ammoDict[ $ammoEntryId ]['id'];
-                } elseif ($ammoDict[ $ammoEntryId ]['id'] !== $objInSlotType) {
-                    throw new LogicException('one slot can containts only one item type');
+            if ('01 00 00 00' == $nextStructType) {
+                $file->assertEqualHex('01 00 00 00 00 00 00 00 02 00 00 00 00 00 00 00');
+                if (! in_array($objectTypeId, [4009, 4010])) {
+                    // не птычки
+                    $file->assertEqualHex('00 00 00 00 00');
                 }
-                ++$objInSlotCount;
+                continue;
             }
-            if (is_null($objInSlotType)) {
-                echo 'ammo slot '.$slot . ' empty', PHP_EOL;
-            } else {
-                echo 'ammo slot '.$slot . ' contants '.$objInSlotCount.' items type '.$objInSlotType, PHP_EOL;
-            }
-        }
 
-        $file->assertEqualHex('02 00 00 00');
+            $ammoSlotsCount = $file->int32();
+            echo 'ammo slots count '.$ammoSlotsCount,PHP_EOL;
+            for ($slot = 0; $slot < $ammoSlotsCount; ++$slot) {
+                $entryCount = $file->int32();
+                $objInSlotCount = 0;
+                $objInSlotType = null;
+                for ($entry = 0; $entry < $entryCount; ++$entry) {
+                    $ammoEntryId = $file->int32();
+                    if (is_null($objInSlotType)) {
+                        $objInSlotType = $ammoDict[ $ammoEntryId ]['id'];
+                    } elseif ($ammoDict[ $ammoEntryId ]['id'] !== $objInSlotType) {
+                        throw new LogicException('one slot can containts only one item type');
+                    }
+                    ++$objInSlotCount;
+                }
+                if (is_null($objInSlotType)) {
+                    echo 'ammo slot '.$slot . ' empty', PHP_EOL;
+                } else {
+                    echo 'ammo slot '.$slot . ' contants '.$objInSlotCount.' items type '.$objInSlotType, PHP_EOL;
+                }
+            }
+
+            $file->assertEqualHex('02 00 00 00');
+        } else {
+            $file->assertEqualHex('00');
+            $nextStructType = '1e 00 00 00'; // хак урала на карте бункера
+        }
 
         switch ($nextStructType) {
             case '1e 00 00 00':
@@ -671,7 +727,10 @@ function testread($filename) {
                     echo 'Unknown unit type '.$objectTypeId.PHP_EOL;
                 }
 
-                $file->assertEqualHex('00 00 00 00 80 bf 00 00 80 bf 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00');
+                $file->assertEqualHex('00 00 00 00 80 bf 00 00 80 bf 00 00 00 00 00 00 00 00 00 00 00');
+                if ($mapVersion == 'current') {
+                    $file->assertEqualHex('00 00 00 00');
+                }
                 $file->unknownblock(1);
                 $file->assertEqualHex('00 00 80 bf 00 00 80 bf');
                 $file->unknownblock(24);
@@ -682,13 +741,19 @@ function testread($filename) {
                 $file->unknownblock(20);
                 $file->unknownblock(1);
                 $file->assertEqualHex('00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00');
-                $file->assertEqualHex('00 00 00 00');
+                if ($mapVersion == 'current') {
+                    $file->assertEqualHex('00 00 00 00');
+                }
                 $selectableWeaponsCount = $file->int8();
                 for ($i = 0; $i < $selectableWeaponsCount; ++$i) {
                     $file->unknownblock(8);
                     //$file->assertEqualHex('00 00 00 00 00 00 00 00'); // встречается у хаммеров и вертушек при добавлении навесного оружия
                 }
-                $file->assertEqualHex('00 00 00 00 00 00 80 3f 00 00 00 00 00 00');
+
+                $file->assertEqualHex('00 00 00 00 00 00 80 3f 00 00 00 00 00');
+                if ($mapVersion == 'current') {
+                    $file->assertEqualHex('00');
+                }
                 if (in_array($objectTypeId, [2, 10, 22])) {
                     $file->assertEqualHex('00 00 00 00 00');
                 }
@@ -878,7 +943,11 @@ function testread($filename) {
         echo 'region '.$regionName . ' ('.$regionId.') at '.$pos1,' ',$pos2,' ',$pos3,' ',$pos4,PHP_EOL;
     }
 
-    $file->assertEqualHex('02 00 00 00 00 00 00 00 00 00 00 00 24 00 00 00');
+    if ($mapVersion == 'current') {
+        $file->assertEqualHex('02 00 00 00 00 00 00 00 00 00 00 00 24 00 00 00');
+    } else {
+        $file->assertEqualHex('01 00 00 00 00 00 00 00 00 00 00 00 15 00 00 00');
+    }
     $scriptsCount = $file->int32();
     $strangeBlock = '00 00 00 00';
     if ($scriptsCount) {
@@ -913,21 +982,21 @@ function testread($filename) {
         $file->assertEqualHex('00 00 00 00 01 00 00 00 00 00 00 00 00 00 00 00');
     }
     $file->assertEqualHex('00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00');
-    $file->assertEqualHex('64 00 00 00 00 00 00 00 02 00 00 00 00 00 00 00 07 00 00 00');
-    $file->assertEqualHex($strangeBlock);
-    $file->assertEqualHex('00 00 00 00 02 00 00 00 00 00 00 00');
-    $file->unknownblock(1);
-    $file->assertEqualHex('00 00 00 00 00 00 00 01 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 01 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00');
+    $file->assertEqualHex('64 00 00 00 00 00 00 00 02 00 00 00 00 00 00 00');
+    if ($mapVersion == 'current') {
+        $file->assertEqualHex('07 00 00 00');
+        $file->assertEqualHex($strangeBlock);
+        $file->assertEqualHex('00 00 00 00 02 00 00 00 00 00 00 00');
+        $file->unknownblock(1);
+        $file->assertEqualHex('00 00 00 00 00 00 00 01 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 01 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00');
+    } else {
+        $file->assertEqualHex('02 00 00 00 00 00 00 00 01 00 00 00 00 00 00 00 00 00 00 00 01 00 00 00 00 00 00 00');
+    }
 
     $file->assertEof();
 
     echo 'read complete',PHP_EOL;
 }
-foreach (glob('orig_resaved/resave_Mission_usa.mis') as $file) {
-    testread($file);
-    echo PHP_EOL;
-}
-die;
 
 $count = 0;
 $failed = [];
