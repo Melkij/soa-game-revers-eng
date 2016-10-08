@@ -384,14 +384,17 @@ function testread($filename) {
     $file->assertEqualHex('02 00 00 00');
     $texturesCount = $file->int32();
     for ($i = 0; $i < $texturesCount; ++$i) {
+        // наложение текстуры одной поверх другой определяется позицией в файле
+        // каждая следующая текстура кладётся поверх предыдущих
         $pos1 = $file->float();
         $pos2 = $file->float();
-        $size1 = $file->float();
-        $size2 = $file->float();
-        $file->unknownblock(4); // возможно тут угол поворота текстуры, забыл тестом покрыть
+        // размеры могут быть отрицательными - если текстура инвертирована по этой оси
+        $sizeWidth = $file->float();
+        $sizeHeight = $file->float();
+        $rotateAngle = $file->float();
         $file->assertEqualHex('ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff');
         $textureId = $file->int32();
-        $file->unknownblock(4); // или тут угол
+        $file->assertEqualHex('00 00 00 00');
     }
     $landId = $file->int32();
     $file->assertEqualHex('ff ff ff ff 03 00 00 00');
@@ -919,15 +922,12 @@ function testread($filename) {
 $count = 0;
 $failed = [];
 $testcases = [
-    'empty_5x5_new2.mis',
-    'empty_5x5_new3.mis',
-    'empty_5x5_new.mis',
-    '5x5_top_left.mis',
-    '5x5_top_r.mis',
-    '5x5_bottom_left.mis',
-    '5x5_bottom_r.mis',
-    '5x5_hor_line.mis',
-    '5x5_vert_line.mis',
+    'texture_bottom_back_mirror_h.mis',
+    'texture_bottom_back_mirror_h_w.mis',
+    'texture_bottom_back_mirror_h_w_rotate.mis',
+    'texture_bottom_back.mis',
+    'texture_bottom.mis',
+    'texture.mis',
 ];
 foreach (glob('testmis/*.mis') as $file) {
     ++$count;
