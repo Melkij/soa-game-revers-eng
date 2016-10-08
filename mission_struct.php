@@ -394,7 +394,8 @@ function testread($filename) {
         $rotateAngle = $file->float();
         $file->assertEqualHex('ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff ff');
         $textureId = $file->int32();
-        $file->assertEqualHex('00 00 00 00');
+        $file->unknownblock(4);
+        //$file->assertEqualHex('00 00 00 00');
     }
     $landId = $file->int32();
     $file->assertEqualHex('ff ff ff ff 03 00 00 00');
@@ -413,7 +414,8 @@ function testread($filename) {
     $minimapsize = $file->float(); // множитель масштаба миникарты. Дефолт 00 00 80 3F (т.е. 1), число меньше - карта ближе, больше - дальше
     $file->assertEqualHex('05 00 00 00');
     $skies = $file->int32();
-    $file->assertEqualHex('00 00 00 00');
+    $file->unknownblock(4);
+    //$file->assertEqualHex('00 00 00 00');
     $rainPercent = $file->float();
     $temperature = $file->float();
     $file->unknownblock(1);
@@ -560,7 +562,8 @@ function testread($filename) {
         }
 
         $file->assertEqualHex('00 00 00 00 00 00 00 00 00');
-        $file->assertEqualHex('01 40 42 0f 00 00 00 00 00');
+        $file->unknownblock(1);
+        $file->assertEqualHex('40 42 0f 00 00 00 00 00');
         $weaponsCount = $file->int32();
         echo 'weapons count: '.$weaponsCount.PHP_EOL;
         for ($structCounter = 0; $structCounter < $weaponsCount; ++$structCounter) {
@@ -912,12 +915,19 @@ function testread($filename) {
     $file->assertEqualHex('00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00');
     $file->assertEqualHex('64 00 00 00 00 00 00 00 02 00 00 00 00 00 00 00 07 00 00 00');
     $file->assertEqualHex($strangeBlock);
-    $file->assertEqualHex('00 00 00 00 02 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 01 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 01 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00');
+    $file->assertEqualHex('00 00 00 00 02 00 00 00 00 00 00 00');
+    $file->unknownblock(1);
+    $file->assertEqualHex('00 00 00 00 00 00 00 01 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 01 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00');
 
     $file->assertEof();
 
     echo 'read complete',PHP_EOL;
 }
+foreach (glob('orig_resaved/resave_Mission_usa.mis') as $file) {
+    testread($file);
+    echo PHP_EOL;
+}
+die;
 
 $count = 0;
 $failed = [];
