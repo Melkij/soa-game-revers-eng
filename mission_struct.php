@@ -310,14 +310,21 @@ function testread($filename) {
 
     $file->assertEqualHex('38 f9 b3 0a 62 93 d1 11 9a 2b 08 00 00 30 05 12');
     $mapVersion = null;
-    if ($file->hexahead(12) == '0a 00 00 00 02 00 00 00 0a 00 00 00') {
-        // версия редактора карты?
-        // игровой редактор оставляет такую метку
-        $file->assertEqualHex('0a 00 00 00 02 00 00 00 0a 00 00 00');
-        $mapVersion = 'current';
-    } else {
-        $file->assertEqualHex('06 00 00 00 02 00 00 00 04 00 00 00');
-        $mapVersion = 'bunker';
+    switch ($file->hexahead(12)) {
+        case '06 00 00 00 02 00 00 00 04 00 00 00':
+            $file->assertEqualHex('06 00 00 00 02 00 00 00 04 00 00 00');
+            $mapVersion = 'bunker';
+            break;
+        case '05 00 00 00 02 00 00 00 03 00 00 00':
+            $file->assertEqualHex('05 00 00 00 02 00 00 00 03 00 00 00');
+            $mapVersion = 'Mission_usa'; // Mission_usa
+            break;
+        default:
+            // версия редактора карты?
+            // игровой редактор оставляет такую метку
+            $file->assertEqualHex('0a 00 00 00 02 00 00 00 0a 00 00 00');
+            $mapVersion = 'current';
+            break;
     }
 
     $titleLenght = $file->int8();
@@ -377,11 +384,15 @@ function testread($filename) {
         $authorLenght = $file->int8();
         $descr = $file->utf8Text($authorLenght);
         $file->assertEqualHex('00 00 00 00');
-    } else {
+    } elseif ($mapVersion == 'bunker') {
         $file->assertEqualHex('00');
     }
 
-    $file->assertEqualHex('09 00 00 00');
+    if ($mapVersion == 'Mission_usa') {
+        $file->assertEqualHex('08 00 00 00');
+    } else {
+        $file->assertEqualHex('09 00 00 00');
+    }
     assertEquals($mapwidth, $file->int32());
     assertEquals($mapheight, $file->int32());
 
@@ -418,10 +429,12 @@ function testread($filename) {
     $landId = $file->int32();
     if ($mapVersion == 'current') {
         $file->assertEqualHex('ff ff ff ff 03 00 00 00');
-    } else {
+    } elseif ($mapVersion == 'bunker') {
         $file->assertEqualHex('ff ff ff ff 02 00 00 00');
+    } else {
+        $file->assertEqualHex('ff ff ff ff 01 00 00 00');
     }
-    //echo $file->hexahead(500), PHP_EOL;
+
     $editorCam = $file->hexahead(24);
     // где находится камера
     $editorCamPosWestEast = $file->float(); // при движении на запад уменьшается, скорей всего 0 - крайняя западная точка
@@ -432,27 +445,35 @@ function testread($filename) {
     $editorCamViewDirectionY = $file->float();
     $editorCamViewDirectionZ = $file->float(); // но это точно z
     $file->unknownblock(4);
+
     if ($mapVersion == 'current') {
         $file->unknownblock(4); // неизвестный промежуточный блок
         $file->assertEqualHex($editorCam); // затем блок данных о камере продублирован
+    } elseif ($mapVersion == 'Mission_usa') {
+        $file->unknownblock(40);
     }
     $file->assertEqualHex('00 00 00 00 00 00 00 00');
     if ($mapVersion == 'current') {
         $minimapsize = $file->float(); // множитель масштаба миникарты. Дефолт 00 00 80 3F (т.е. 1), число меньше - карта ближе, больше - дальше
     }
-    $file->assertEqualHex('05 00 00 00');
+    if ($mapVersion == 'Mission_usa') {
+        $file->assertEqualHex('04 00 00 00');
+    } else {
+        $file->assertEqualHex('05 00 00 00');
+    }
     $skies = $file->int32();
     $file->unknownblock(4);
-    //$file->assertEqualHex('00 00 00 00');
+        //$file->assertEqualHex('00 00 00 00');
     $rainPercent = $file->float();
     $temperature = $file->float();
     $file->unknownblock(1);
     if ($mapVersion == 'current') {
-        $file->assertEqualHex('00 00 00 00 0c 00 00');
-    } else {
-        $file->assertEqualHex('00 00 00 00 0b 00 00');
+        $file->assertEqualHex('00 00 00 00 0c 00 00 00');
+    } elseif ($mapVersion == 'bunker') {
+        $file->assertEqualHex('00 00 00 00 0b 00 00 00');
+    } elseif ($mapVersion == 'Mission_usa') {
+        $file->assertEqualHex('00 00 00 09 00 00 00');
     }
-    $file->assertEqualHex('00');
     $file->unknownblock(4); // скорей всего здесь игровое время +- возможное смещение на 1 байт. 3 байта точно меняются
     $file->assertEqualHex('02 00 00 00');
 
@@ -502,6 +523,8 @@ function testread($filename) {
 
     if ($mapVersion == 'current') {
         $file->assertEqualHex('63 00 00 00');
+    } elseif ($mapVersion == 'Mission_usa') {
+        $file->assertEqualHex('25 00 00 00 00 00 00 00 00 00 00 00');
     } else {
         $file->assertEqualHex('41 00 00 00');
     }
@@ -523,6 +546,8 @@ function testread($filename) {
         $scaleFactor = $file->float(); // размер камней, деревьев. 1 для всех остальных
         if ($mapVersion == 'current') {
             $file->assertEqualHex('01 01 00 00 00 00 16 00 00 00 00 00 00 00');
+        } elseif ($mapVersion == 'Mission_usa') {
+            $file->assertEqualHex('01 01 00 00 00 00 08 00 00 00 00 00 00 00');
         } else {
             $file->assertEqualHex('01 01 00 00 00 00 10 00 00 00 00 00 00 00');
         }
@@ -551,10 +576,19 @@ function testread($filename) {
             // хак камней
             if ($mapVersion == 'current') {
                 $file->assertEqualHex('00 00 00 00'); // ahead assert. Ну и всё тут
+            } elseif ($mapVersion == 'Mission_usa') {
+                $file->assertEqualHex('00 00 00 00');
             } else {
                 $file->assertEqualHex('00 00 00 00 00 00 00 00 00 00 00 00');
             }
             continue;
+        }
+        if ($mapVersion == 'Mission_usa') {
+            if ($file->hexahead(8) == '00 00 00 00 00 00 00 00') {
+                // хак построек
+                $file->assertEqualHex('00 00 00 00 00 00 00 00');
+                continue;
+            }
         }
         if ($file->hexahead(16) == '00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00') {
             // хак построек
@@ -945,6 +979,8 @@ function testread($filename) {
 
     if ($mapVersion == 'current') {
         $file->assertEqualHex('02 00 00 00 00 00 00 00 00 00 00 00 24 00 00 00');
+    } elseif ($mapVersion == 'Mission_usa') {
+        $file->assertEqualHex('01 00 00 00 00 00 00 00 00 00 00 00 07 00 00 00');
     } else {
         $file->assertEqualHex('01 00 00 00 00 00 00 00 00 00 00 00 15 00 00 00');
     }
@@ -982,15 +1018,19 @@ function testread($filename) {
         $file->assertEqualHex('00 00 00 00 01 00 00 00 00 00 00 00 00 00 00 00');
     }
     $file->assertEqualHex('00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00');
-    $file->assertEqualHex('64 00 00 00 00 00 00 00 02 00 00 00 00 00 00 00');
-    if ($mapVersion == 'current') {
-        $file->assertEqualHex('07 00 00 00');
-        $file->assertEqualHex($strangeBlock);
-        $file->assertEqualHex('00 00 00 00 02 00 00 00 00 00 00 00');
-        $file->unknownblock(1);
-        $file->assertEqualHex('00 00 00 00 00 00 00 01 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 01 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00');
+    if ($mapVersion == 'Mission_usa') {
+        $file->assertEqualHex('64 00 00 00 00 00 00 00 01 00 00 00 00 00 00 00 01 00 00 00 00 00 00 00 01 00 00 00 00 00 00 00');
     } else {
-        $file->assertEqualHex('02 00 00 00 00 00 00 00 01 00 00 00 00 00 00 00 00 00 00 00 01 00 00 00 00 00 00 00');
+        $file->assertEqualHex('64 00 00 00 00 00 00 00 02 00 00 00 00 00 00 00');
+        if ($mapVersion == 'current') {
+            $file->assertEqualHex('07 00 00 00');
+            $file->assertEqualHex($strangeBlock);
+            $file->assertEqualHex('00 00 00 00 02 00 00 00 00 00 00 00');
+            $file->unknownblock(1);
+            $file->assertEqualHex('00 00 00 00 00 00 00 01 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 01 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00');
+        } else {
+            $file->assertEqualHex('02 00 00 00 00 00 00 00 01 00 00 00 00 00 00 00 00 00 00 00 01 00 00 00 00 00 00 00');
+        }
     }
 
     $file->assertEof();
