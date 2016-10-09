@@ -346,22 +346,32 @@ function testread($filename) {
     5pl_3h
     00 00 00 00     01 00 00 00   01 01     01 00 00 00 01 02   01 00 00 00 01 03   02 00 00 00 01 04   02 00 00 00 01 05   00 00
     */
+
+    $parties = [];
     $partyCount = $file->int32();
     $file->assertEqualHex('00');
     for ($partyId = 0; $partyId < $partyCount; ++$partyId) {
         $partyType = $file->int32(); // 1 is human, 2 is computer?
+        $parties[$partyId] = [
+            'type' => null,
+            'typeid' => $partyType,
+        ];
         if ($partyType == 1) {
             // human
+            $parties[$partyId]['type'] = 'human';
         } elseif ($partyType == 2) {
             // ai
+            $parties[$partyId]['type'] = 'ai';
         } else {
             throw new LogicException('unknown partytype '.$partyType);
         }
         $readAdd = $file->int8();
+        $parties[$partyId]['appendix'] = null;
         if ($readAdd) {
             // возможно, $partyId + 1, но не хватает разрядности.
-            // Хм, а может игроков-людей максимум 255? Этот блок в 1 байт появляется только при добавлении кторого игрока-человека. Может, id для сетевой игры?
+            // Хм, а может игроков-людей максимум 255? Этот блок в 1 байт появляется только при добавлении второго игрока-человека. Может, id для сетевой игры?
             $file->unknownblock($readAdd);
+            $parties[$partyId]['appendix'] = $file->hexahead($readAdd);
         }
     }
 
@@ -369,10 +379,11 @@ function testread($filename) {
         $file->assertEqualHex('00 00');
         assertEquals($partyCount, $file->int32());
         for ($partyId = 0; $partyId < $partyCount; ++$partyId) {
-            echo 'party ' .$partyId,PHP_EOL;
+            $parties[$partyId]['seekerInventory'] = [];
             $seekerInventoryCount = $file->int32();
-            assertEquals($partyId, $file->int32());
+            $parties[$partyId]['color'] = $file->int32();
             for ($i = 0; $i < $seekerInventoryCount; ++$i) {
+                $parties[$partyId]['seekerInventory'][] = $file->hexahead(5*4);
                 $file->unknownblock(5*4); // see later
             }
         }
@@ -491,12 +502,14 @@ function testread($filename) {
     */
     for ($partyId = 0; $partyId < $partyCount; ++$partyId) {
         $partyType = $file->int32();
+        assertEquals($parties[$partyId]['typeid'], $partyType);
         $file->assertEqualHex('0c 00 00 00');
         assertEquals($partyId, $file->int32());
         $startPosition1 = $file->float(); // координаты флажка-старта при переходе между миссиями
         $startPosition2 = $file->float();
         $playerNameLen = $file->int8();
         $playerName = $file->utf8Text($playerNameLen);
+        $parties[$partyId]['title'] = $playerName;
         $strangeMarker = $file->int32();
         if ($strangeMarker != 0) {
             if ($strangeMarker == 1) {
