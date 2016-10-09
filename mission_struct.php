@@ -510,21 +510,15 @@ function testread($filename) {
         $playerNameLen = $file->int8();
         $playerName = $file->utf8Text($playerNameLen);
         $parties[$partyId]['title'] = $playerName;
-        $strangeMarker = $file->int32();
-        if ($strangeMarker != 0) {
-            if ($strangeMarker == 1) {
-                $file->assertEqualHex('01 00 00 00 01 00 00 00'); // добавился при добавлении 3 коров
-            } else {
-                throw new LogicException('unknown bytes int32 ' . $strangeMarker);
-            }
+
+        $pairsCount = $file->int32();
+        if ($pairsCount) {
+            // какие-то пары int32
+            $file->unknownblock(4*2*$pairsCount);
         }
-        $camPosRecorded = $file->int8();
-        if ($camPosRecorded == 1 or $camPosRecorded == 0) {
-            $file->unknownblock(6*4); // должно быть это 3 float для позиции камеры xyz и направления взгляда xyz
-        } else {
-            throw new LogicException('unknown bytes int32 ' . $camPosRecorded);
-        }
-        $file->unknownblock(4);
+
+        $file->unknownblock(1);
+        $file->unknownblock(7*4); // возможно, стартовая позиция камеры и размер миникарты
         $seekerInventoryCount = $file->int32(); // again?
         for ($i = 0; $i < $seekerInventoryCount; ++$i) {
             $file->unknownblock(5*4); // возможно, objectId, objectId, min, max, ещё какое-то число
@@ -667,22 +661,29 @@ function testread($filename) {
         for ($structCounter = 0; $structCounter < $weaponsCount; ++$structCounter) {
             $file->unknownblock(4);
             $file->unknownblock(4);
-            assertEquals($unitInnerStructId, $file->int32());
+            $file->unknownblock(4);
+            //assertEquals($unitInnerStructId, $file->int32());
             $file->assertEqualHex('00');
             $file->unknownblock(4); // различается иногда
             $file->assertEqualHex('01 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 f4 01 00 00');
             $file->unknownblock(12);
             $file->assertEqualHex('00 00 00 00');
             $file->unknownblock(8);
-            $nextBytesCount = $file->int32();
-            if ($nextBytesCount) {
-                // похоже, это заряженные снаряды в вертушках
-                $file->unknownblock(($nextBytesCount+1) * 4);
+            $innerAmmoStruct = $file->int32();
+            if ($innerAmmoStruct == 4) {
+                $ammoObjectId = $file->int32(); // тип объекта
+                $ammoRelationObjectId = $file->int32(); // id, на который потом ссылаются в описании багажника
+                $fnAmmoStruct4Parser();
+            } elseif ($innerAmmoStruct != 0) {
+                throw new \LogicException('unknown inner struct '.$innerAmmoStruct);
             }
             $file->assertEqualHex('00 00 00 00 00');
             assertEquals($objectUid, $file->int32()); // зачем-то повторяется аж сразу 2 раза
             assertEquals($objectUid, $file->int32());
-            $file->assertEqualHex('ff ff ff ff');
+            $file->assertEqualHexAny(
+                'ff ff ff ff',
+                '02 00 00 00'
+            );
             $objectName = $file->utf8Text($file->int8()); // TRES_OBJECTS_UNIT_*
             $file->unknownblock(4);
 
@@ -1050,6 +1051,10 @@ function testread($filename) {
 
     echo 'read complete',PHP_EOL;
 }
+
+//testread('orig_resaved/campaign/resave_mission_1.mis');
+//testread('/hsrv/iso/SOA/Руссобит-М/mission_1/mission_1.mis');
+//die;
 
 $count = 0;
 $failed = [];
