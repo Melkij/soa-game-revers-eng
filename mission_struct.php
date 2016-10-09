@@ -273,7 +273,15 @@ function testread($filename) {
                 );
                 $file->assertEqualHex('01 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 f4 01 00 00 40 00 41 00 42 00 41 00 47 00 46 00 00 00 00 00 4a 00 49 00 00 00 4a');
                 $file->unknownblock(1);
-                $file->assertEqualHex('00 00 00 00 00 00 00 00 00 ff ff ff ff ff ff ff ff ff ff ff ff');
+                $innerAmmoStruct = $file->int32();
+                if ($innerAmmoStruct == 4) {
+                    $ammoObjectId = $file->int32(); // тип объекта
+                    $ammoRelationObjectId = $file->int32(); // id, на который потом ссылаются в описании багажника
+                    $fnAmmoStruct4Parser();
+                } elseif ($innerAmmoStruct != 0) {
+                    throw new \LogicException('unknown inner struct '.$innerAmmoStruct);
+                }
+                $file->assertEqualHex('00 00 00 00 00 ff ff ff ff ff ff ff ff ff ff ff ff');
                 $textLenght = $file->int8();
                 $text = $file->utf8Text($textLenght);
                 $file->assertEqualHex('ff ff ff ff');
