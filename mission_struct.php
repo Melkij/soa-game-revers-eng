@@ -556,7 +556,10 @@ function testread($filename) {
         $position1 = $file->float();
         $position2 = $file->float();
         $maybeTypeBlock = $file->hexahead(4);
-        $file->unknownblock(4); // 00 00 00 80 для юнитов, 00 00 00 00 для сооружений? нет, не так
+        $file->assertEqualHexAny(
+            '00 00 00 80', // наземные машины и самолёты
+            '00 00 00 00' // все прочие объекты
+        );
         $rotateAngle = $file->float(); // угол поворота?
         $scaleFactor = $file->float(); // размер камней, деревьев. 1 для всех остальных
         if ($mapVersion == 'current') {
@@ -655,6 +658,7 @@ function testread($filename) {
                         throw new \LogicException('unknown struct for '.$objectTypeId);
                 }
                 $file->assertEqualHex('00 00 00 00');
+                assertEquals($maybeTypeBlock, '00 00 00 00');
                 continue;
             }
         } else {
@@ -742,6 +746,7 @@ function testread($filename) {
                     // не птычки
                     $file->assertEqualHex('00 00 00 00 00');
                 }
+                assertEquals($maybeTypeBlock, '00 00 00 00');
                 continue;
             }
 
@@ -817,9 +822,12 @@ function testread($filename) {
                     $file->assertEqualHex('00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 f0 55 00 00 0a d7 23 3c 40 08 f4 34 00 00 00 00 01 00');
                     $file->unknownblock(13);
                     $file->assertEqualHex('00 00 80 3f f0 55 00 00 0a d7 23 3c 40 08 f4 34 00 00 00 00 00 00 00 00 00 00 40 42 0f 00 00 00 00 00 00 00 00 80 40 00 00 00 00');
+                } else {
+                    assertEquals($maybeTypeBlock, '00 00 00 80');
                 }
                 break;
             case '0a 00 00 00':
+                assertEquals($maybeTypeBlock, '00 00 00 00');
                 //echo $file->hexahead($file->getMaxPosition());
                 echo 'human type '.$objectTypeId,PHP_EOL;
                 $humanName = $file->utf8Text($file->int8());
@@ -1067,12 +1075,6 @@ function testread($filename) {
 $count = 0;
 $failed = [];
 $testcases = [
-    'texture_bottom_back_mirror_h.mis',
-    'texture_bottom_back_mirror_h_w.mis',
-    'texture_bottom_back_mirror_h_w_rotate.mis',
-    'texture_bottom_back.mis',
-    'texture_bottom.mis',
-    'texture.mis',
 ];
 foreach (glob('testmis/*.mis') as $file) {
     ++$count;
@@ -1084,7 +1086,7 @@ foreach (glob('testmis/*.mis') as $file) {
         echo 'failed: ' . $e,PHP_EOL;
     } finally {
         echo PHP_EOL,PHP_EOL;
-        if (in_array(basename($file), $testcases)) {
+        if (empty($testcases) or in_array(basename($file), $testcases)) {
             echo ob_get_clean();
         } else {
             ob_clean();
