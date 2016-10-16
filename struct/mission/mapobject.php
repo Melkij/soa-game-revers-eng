@@ -1,0 +1,53 @@
+<?php
+
+namespace struct\mission;
+
+use struct\mission\objects\landscape;
+use struct\mission\objects\build;
+
+class mapobject
+{
+    public $type;
+    public $posX;
+    public $posY;
+    public $rotate;
+    public $scale;
+    public $maxHealth;
+    public $currentHealth;
+    public $maxArmor;
+    public $currentArmor;
+    public $baseObjectName;
+
+    public $unknown0; // для нормальной карты - только 00 00 00 00 или 00 00 00 80
+    public $unknown1;
+    public $unknown2;
+
+    public function __set($name, $value)
+    {
+        throw new \LogicException('not allowed');
+    }
+
+    private function reinit(mapobject $new)
+    {
+        foreach (get_object_vars($this) as $var => $value) {
+            $new->{$var} = $value;
+        }
+        return $new;
+    }
+
+    /**
+     * деревья, камни
+     */
+    public function reinitAsLandscape()
+    {
+        return $this->reinit(new landscape);
+    }
+
+    public function reinitAsBuild()
+    {
+        if (abs($this->scale - 1) > 0.0001) {
+            throw new \LogicException('can not scale building');
+        }
+        return $this->reinit(new build);
+    }
+}
