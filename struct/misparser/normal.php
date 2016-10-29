@@ -294,11 +294,7 @@ class normal extends base
                     $this->nextEqualHex('00 00 ed 3e');
                     $inBoxCount = $this->int32();
                     for ($structCounter = 0; $structCounter < $inBoxCount; ++$structCounter) {
-                        throw new ParserError('not implement');
-                        $ammoStructType = $file->int32();
-                        $ammoObjectId = $file->int32(); // тип объекта
-                        $ammoRelationObjectId = $file->int32(); // id, на который потом ссылаются в описании багажника
-                        $fnAmmoInnerBoxParser($ammoStructType);
+                        $this->ammonitionParser();
                     }
                     break;
                 case 2007:
@@ -323,6 +319,7 @@ class normal extends base
         $this->nextEqualHex('40 42 0f 00 00 00 00 00');
         $weaponsCount = $this->int32();
         for ($structCounter = 0; $structCounter < $weaponsCount; ++$structCounter) {
+            // судя по всему штатное вооружение машин. Но присутствует и для людей
             // todo, just skip
             $this->unknownblock(4);
             $this->unknownblock(4);
@@ -333,15 +330,7 @@ class normal extends base
             $this->unknownblock(12);
             $this->nextEqualHex('00 00 00 00');
             $this->unknownblock(8);
-            $innerAmmoStruct = $this->int32();
-            if ($innerAmmoStruct == 4) {
-                throw new ParserError('not implement');
-                $ammoObjectId = $file->int32(); // тип объекта
-                $ammoRelationObjectId = $file->int32(); // id, на который потом ссылаются в описании багажника
-                $fnAmmoStruct4Parser();
-            } elseif ($innerAmmoStruct != 0) {
-                throw new \LogicException('unknown inner struct '.$innerAmmoStruct);
-            }
+            $this->ammonitionParser([4]);
             $this->nextEqualHex('00 00 00 00 00');
             $this->assertEquals($obj->mapuid, $this->int32()); // зачем-то повторяется аж сразу 2 раза
             $this->assertEquals($obj->mapuid, $this->int32());
@@ -355,27 +344,7 @@ class normal extends base
 
         $ammoCount = $this->int32();
         for ($ammo = 0; $ammo < $ammoCount; ++$ammo) {
-            throw new ParserError('not implement');
-            $ammoStructType = $file->int32();
-            $ammoObjectId = $file->int32(); // тип объекта
-            $ammoRelationObjectId = $file->int32(); // id, на который потом ссылаются в описании багажника
-
-            $fnAmmoInnerBoxParser($ammoStructType);
-
-            if (isset($ammunition[ $ammoObjectId ])) {
-                echo 'found '.$ammoObjectId.' "'.$ammunition[ $ammoObjectId ].'" (struct '.$ammoStructType.')'.PHP_EOL;
-            } else {
-                echo 'found unknown ammunition '.$ammoObjectId.PHP_EOL;
-            }
-
-            if (isset($ammoRelationObjectId)) {
-                if (isset($ammoDict[ $ammoRelationObjectId ])) {
-                    throw new \LogicException('ammo dict ' . $ammoRelationObjectId . ' exists! Not global unique?');
-                }
-                $ammoDict[ $ammoRelationObjectId ] = [
-                    'id' => $ammoObjectId,
-                ];
-            }
+            $obj->addAmmunitionItem($this->ammonitionParser());
         }
 
         $this->nextEqualHex('00 00 00 00 00 00 00 00 00 00 00 00');
@@ -427,6 +396,78 @@ class normal extends base
             throw new \LogicException('wrong object class');
         }
         return $unit;
+    }
+
+    protected function ammonitionParserStruct4()
+    {
+        $this->nextEqualHex('00 0e 00 0d 00 01');
+        $ammoSize = $this->int32(); // число боеприпасов, т.е. например номинальные 250 для 14,5мм ленты
+        $this->nextEqualHex('00 01');
+    }
+
+    protected function ammonitionParser(array $validOnlyType = null)
+    {
+        $ammoStructType = $this->int32();
+
+        if ($ammoStructType == 0) {
+            return null;
+        }
+
+        if (is_array($validOnlyType) and !in_array($ammoStructType, $validOnlyType)) {
+            throw new \LogicException('ammo struct '.$ammoStructType.' not valid here');
+        }
+
+        $ammoObjectId = $this->int32(); // тип объекта
+        $ammoRelationObjectId = $this->int32(); // id, на который потом ссылаются в описании багажника
+
+        switch ($ammoStructType) {
+            case 4:
+                $this->ammonitionParserStruct4();
+                break;
+            case 1:
+                // всякая хрень вроде чумодана
+                $this->nextEqualHex('00 ff ff ff ff 01');
+                break;
+            case 2:
+                // человеческое оружие
+                $this->nextEqualHex(
+                    '00 0e 00 0d 00', // этот блок в нескольких видах явным образом повторяется. Может быть, им рулится вес/объём одного элемента для посчёта занятости слота машины/человека?
+                    '00 ff ff ff ff'
+                );
+                $this->nextEqualHex('01 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 f4 01 00 00 40 00 41 00 42 00 41 00 47 00 46 00 00 00 00 00 4a 00 49 00 00 00 4a');
+                $this->unknownblock(1);
+                $this->ammonitionParser([ 4 ]);
+                $this->nextEqualHex('00 00 00 00 00 ff ff ff ff ff ff ff ff ff ff ff ff');
+                $textLenght = $this->text();
+                $this->nextEqualHex('ff ff ff ff');
+                break;
+            case 8:
+                $this->nextEqualHex('00 0e 00 0d 00 01');
+                $armor = $this->int32();
+                if (! in_array($armor, [
+                    40, // лёгкий броник
+                    80, // тяжёлый
+                ])) {
+                    throw new LogicException('unknown armor size '.$armor);
+                }
+                break;
+            case 34:
+                $this->nextEqualHex(
+                    '00 0e 00 0d 00', // этот блок в нескольких видах явным образом повторяется. Может быть, им рулится вес/объём одного элемента для посчёта занятости слота машины/человека?
+                    '00 ff ff ff ff'
+                );
+                $this->nextEqualHex('01 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 f4 01 00 00 40 00 41 00 42 00 41 00 47 00 46 00 00 00 00 00 4a 00 49 00 00 00 4a 01 04 00 00 00');
+                $this->unknownblock(5);
+                $this->nextEqualHex('00 00 00 00 0e 00 0d 00 01 01 00 00 00 00 01 00 00 00 00 00 ff ff ff ff ff ff ff ff ff ff ff ff 0c 75 6e 6b 6e 6f 77 6e 20 6e 61 6d 65 ff ff ff ff');
+                break;
+            case 66:
+                $this->nextEqualHex('00 e8 03 00 00 01 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 f4 01 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 02 00');
+                $this->unknownblock(2);
+                $this->nextEqualHex('00 00 00 01 00 00 00 00 00 00 00 00 00 ff ff ff ff ff ff ff ff ff ff ff ff 0c 75 6e 6b 6e 6f 77 6e 20 6e 61 6d 65 ff ff ff ff');
+                break;
+            default:
+                throw new \LogicException('unknown '.$ammoStructType);
+        }
     }
 
     protected function mapObjectVehicle(vehicle $obj)
@@ -493,95 +534,53 @@ class normal extends base
         $this->nextEqualHex('00 00 01 00 00 00 00 00 00 00 00 00 00 00');
         // маркер принадлежности к команде должен быть до этого момента, дальше свою-чужой бинарно идинтичны
 
-        $armorStructType = $this->int32();
-        if ($armorStructType != 0) {
-            if ($armorStructType == 8) {
-                throw new ParserError('not implement');
-                // броник
-                $ammoObjectId = $file->int32(); // тип объекта
-                $ammoRelationObjectId = $file->int32(); // id, на который потом ссылаются
-                $fnAmmoInnerBoxParser($armorStructType);
-                if (isset($ammunition[ $ammoObjectId ])) {
-                    echo 'found '.$ammoObjectId.' "'.$ammunition[ $ammoObjectId ].'"'.PHP_EOL;
-                } else {
-                    echo 'found unknown ammunition '.$ammoObjectId.PHP_EOL;
-                }
-            } else {
-                throw new \LogicException('impossible armor struct id '.$armorStructType);
-            }
-        }
-        $binokleStructType = $this->int32();
-        if ($binokleStructType != 0) {
-            if ($binokleStructType == 1) {
-                throw new ParserError('not implement');
-                // бинокля или пнв
-                $ammoObjectId = $file->int32(); // тип объекта
-                $ammoRelationObjectId = $file->int32(); // id, на который потом ссылаются
-                $fnAmmoInnerBoxParser($binokleStructType);
-                if (isset($ammunition[ $ammoObjectId ])) {
-                    echo 'found '.$ammoObjectId.' "'.$ammunition[ $ammoObjectId ].'"'.PHP_EOL;
-                } else {
-                    echo 'found unknown ammunition '.$ammoObjectId.PHP_EOL;
-                }
-            } else {
-                throw new \LogicException('impossible binokle struct id '.$binokleStructType);
-            }
-        }
+        // броник
+        $this->ammonitionParser([8]);
+        // бинокль
+        $this->ammonitionParser([1]);
+        // оружие в руках
+        //$this->ammonitionParser([2, 34, 66]);
 
         $weaponStructType = $this->int32();
         if ($weaponStructType != 0) {
             if (in_array($weaponStructType, [2, 34, 66])) {
-                throw new ParserError('not implement');
                 // оружие или граната в руках
                 // по мотивам fnAmmoInnerBoxParser, но различается окончание
-                $ammoObjectId = $file->int32(); // тип объекта
-                $ammoRelationObjectId = $file->int32(); // id, на который потом ссылаются
-                if (isset($ammunition[ $ammoObjectId ])) {
-                    echo 'found '.$ammoObjectId.' "'.$ammunition[ $ammoObjectId ].'"'.PHP_EOL;
-                } else {
-                    echo 'found unknown ammunition '.$ammoObjectId.PHP_EOL;
-                }
-                $file->assertEqualHexAny(
+                $ammoObjectId = $this->int32(); // тип объекта
+                $ammoRelationObjectId = $this->int32(); // id, на который потом ссылаются
+                $this->nextEqualHex(
                     '00 0e 00 0d 00', // этот блок в нескольких видах явным образом повторяется. Может быть, им рулится вес/объём одного элемента для посчёта занятости слота машины/человека?
                     '00 ff ff ff ff',
                     '00 01 00 00 00',
                     '00 ff 01 01 01',
                     '00 00 00 00 00'
                 );
-                $file->assertEqualHex('01 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00');
-                $file->assertEqualHex('f4 01 00 00');
-                $file->assertEqualHexAny(
+                $this->nextEqualHex('01 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00');
+                $this->nextEqualHex('f4 01 00 00');
+                $this->nextEqualHex(
                     '40 00 41 00 42 00 41 00 47 00 46 00 00 00 00 00 4a 00 49 00 00 00 4a',
                     'ff 01 01 01 ff 01 01 01 ff 01 01 01 00 00 00 00 ff 01 01 01 00 00 01'
                 );
-                $file->assertEqualHexAny('00', '01');
-                $innerAmmoStruct = $file->int32();
-                if ($innerAmmoStruct == 4) {
-                    $ammoObjectId = $file->int32(); // тип объекта
-                    $ammoRelationObjectId = $file->int32(); // id, на который потом ссылаются в описании багажника
-                    $fnAmmoStruct4Parser();
-                } elseif ($innerAmmoStruct != 0) {
-                    throw new \LogicException('unknown inner struct '.$innerAmmoStruct);
-                }
+                $this->nextEqualHex('00', '01');
+                $this->ammonitionParser([ 4 ]);
                 // вот этот хвост иной здесь, относительно fnAmmoInnerBoxParser
-                switch ($objectTypeId) {
+                switch ($obj->type) {
                     case 3002:
                         // рыцарь
-                        $file->assertEqualHex('00 00 00 00 00 07 00 00 00 07 00 00 00 01 00 00 00');
+                        $this->nextEqualHex('00 00 00 00 00 07 00 00 00 07 00 00 00 01 00 00 00');
                         break;
                     case 3003:
                         // нитро
-                        $file->assertEqualHexAny(
+                        $this->nextEqualHex(
                             '00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00',
                             '00 00 00 00 00 04 00 00 00 04 00 00 00 01 00 00 00'
                         );
                         break;
                     default:
-                        $file->assertEqualHex('00 00 00 00 00 02 00 00 00 02 00 00 00 01 00 00 00');
+                        $this->nextEqualHex('00 00 00 00 00 02 00 00 00 02 00 00 00 01 00 00 00');
                 }
-                $someTitle = $file->utf8Text($file->int8());
-                assertEquals($humanName, $someTitle); // ??? реально продублировано имя человека в оружии
-                $file->assertEqualHex('04 00 00 00');
+                $this->assertEquals($obj->humanname, $this->text()); // ??? реально продублировано имя человека в оружии
+                $this->nextEqualHex('04 00 00 00');
             } else {
                 throw new \LogicException('impossible weapon struct id '.$weaponStructType);
             }

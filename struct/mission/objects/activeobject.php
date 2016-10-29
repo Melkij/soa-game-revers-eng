@@ -14,6 +14,13 @@ class activeobject extends mapobject
 
     public $weapons = [];
 
+    protected $ammunitions = [];
+
+    public function addAmmunitionItem($item)
+    {
+        $this->ammunitions[] = $item;
+    }
+
     public function reinitAsAnimal()
     {
         return $this->reinit(new animal);
