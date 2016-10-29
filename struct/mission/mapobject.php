@@ -4,10 +4,13 @@ namespace struct\mission;
 
 use struct\mission\objects\landscape;
 use struct\mission\objects\build;
+use struct\mission\objects\ammunition;
+use struct\mission\objects\activeobject;
 
 class mapobject
 {
     public $type;
+    public $mapuid;
     public $posX;
     public $posY;
     public $rotate;
@@ -27,7 +30,7 @@ class mapobject
         throw new \LogicException('not allowed');
     }
 
-    private function reinit(mapobject $new)
+    protected function reinit(mapobject $new)
     {
         foreach (get_object_vars($this) as $var => $value) {
             $new->{$var} = $value;
@@ -41,6 +44,15 @@ class mapobject
     public function reinitAsLandscape()
     {
         return $this->reinit(new landscape);
+    }
+
+    public function reinitAsAmmunition()
+    {
+        return $this->reinit(new ammunition);
+    }
+    public function reinitAsActiveObject()
+    {
+        return $this->reinit(new activeobject);
     }
 
     public function reinitAsBuild()

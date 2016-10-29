@@ -47,6 +47,10 @@ abstract class base
 
     abstract protected function process();
 
+    protected function int8()
+    {
+        return $this->file->int8();
+    }
     protected function int32()
     {
         return $this->file->int32();
