@@ -10,7 +10,9 @@ spl_autoload_register(function($class) {
     }
 });
 
-//var_dump(Mission::readFromFile('/home/melkij/tmp/soa/missions/Mission_usa.mis'));
+set_error_handler(function ($errno, $errstr) {
+    throw new \LogicException($errstr, $errno);
+});
 
 $count = 0;
 $failed = [];
@@ -25,7 +27,7 @@ foreach (glob('testmis/*.mis') as $file) {
             continue;
         } else {
             $failed[] = basename($file);
-            echo basename($file) . ' ParserError: ' . $e->getMessage(),PHP_EOL;
+            echo basename($file) . ' ParserError: ' . $e,PHP_EOL;
         }
     }
 }

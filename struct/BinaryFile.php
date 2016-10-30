@@ -82,7 +82,7 @@ class BinaryFile
 
     public function utf8Text($len)
     {
-        return iconv('utf8', 'utf8', $this->readbyte($len)); // utf to utf iconv to verify utf binary
+        return iconv('utf8', 'utf8//IGNORE', $this->readbyte($len)); // utf to utf iconv to verify utf binary
     }
 
     public function skip($len)

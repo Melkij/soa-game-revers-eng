@@ -120,7 +120,7 @@ class normal extends base
 
             $this->assertEquals($party->aitype, $this->getPartyAiType($this->int32()));
             $this->nextEqualHex('0c 00 00 00');
-            $this->assertEquals($partyId, $this->int32());
+            $this->assertEquals($party->color, $this->int32());
             $party->startPositionX = $this->float(); // координаты флажка-старта при переходе между миссиями
             $party->startPositionY = $this->float();
             $party->name = $this->text();
@@ -137,8 +137,7 @@ class normal extends base
                 $this->assertEquals($party->seekerInventory[ $i ], $this->file->hexread(5*4));
             }
             $this->nextEqualHex('01 01');
-            $party->unknownParser3Block = $this->unknownBlock(1); // отзывается на вооружённых рыцарей? diff female_enemy_knight_skin.mis female_enemy_knight_empty.mis
-            $this->nextEqualHex('00 00 00 00 00 00 00');
+            $party->unknownParser3Block = $this->unknownBlock(8); // отзывается на вооружённых рыцарей? diff female_enemy_knight_skin.mis female_enemy_knight_empty.mis
         }
     }
 
@@ -215,7 +214,14 @@ class normal extends base
     protected function mapEnvironment()
     {
         $this->mis->landId = $this->int32();
-        $this->nextEqualHex('ff ff ff ff 03 00 00 00');
+
+        $waitingNext = 'ff ff ff ff 03 00 00 00';
+        if ($this->file->hexahead(8) != $waitingNext) {
+            // огромный кусок непонятно чего
+            // похоже, статичен по длине для пересохранённых файлов оригинальной кампании
+            $this->file->skip(1923774);
+        }
+        $this->nextEqualHex($waitingNext);
 
         $camBlock = $this->file->hexahead(6*4);
         // где находится камера
@@ -229,7 +235,7 @@ class normal extends base
 
         $this->mis->unknownCamSeparator = $this->unknownBlock(8);
 
-        $this->assertEquals($camBlock, $this->file->hexread(6*4));
+        $this->nextEqualHex($camBlock);
 
         $this->nextEqualHex('00 00 00 00 00 00 00 00');
         $this->mis->minimapsize = $this->float(); // множитель масштаба миникарты. Дефолт 00 00 80 3F (т.е. 1), число меньше - карта ближе, больше - дальше
@@ -301,7 +307,7 @@ class normal extends base
             $ammo = $obj->reinitAsAmmunition();
             $ammo->structId = $this->int32();
             $ammo->equipId = $this->int32();
-            $this->assertEquals($ammo->mapuid, $this->int32());
+            $this->int32();
             $this->nextEqualHex('00');
             $ammo->unknownAmmo0 = $this->unknownBlock(4);
             $this->nextEqualHex('01 00 00 00 00 00', '01 14 00 00 00 00');
@@ -330,7 +336,7 @@ class normal extends base
                     // чумадан
                     break;
                 default:
-                    throw new \LogicException('unknown struct for '.$ammo->type . ' '.$ammo->structId);
+                    throw new ParserError('unknown struct for '.$ammo->type . ' '.$ammo->structId);
             }
             $this->nextEqualHex('00 00 00 00');
             return $ammo;
@@ -493,7 +499,8 @@ class normal extends base
             } else {
                 $this->nextEqualHex(
                     'ff ff ff ff',
-                    '02 00 00 00'
+                    '02 00 00 00',
+                    '04 00 00 00'
                 );
             }
 
@@ -636,14 +643,15 @@ class normal extends base
 
     protected function objectHeaderConst()
     {
-        $this->nextEqualHex('01 01 00 00 00 00 16 00 00 00 00 00 00 00');
+        $this->nextEqualHex('01', '00');
+        $this->nextEqualHex('01 00 00 00 00 16 00 00 00 00 00 00 00');
     }
 
     protected function objectHeaderBlock2(mapobject $obj)
     {
-        $this->nextEqualHex('00 00 00 00');
-        $obj->unknown2 = $this->unknownBlock(4);
-        $this->nextEqualHex('00 00 80 3f 00 00 00 00 00 00 ff ff ff ff ff ff ff ff ff ff ff ff');
+        $this->nextEqualHex('00 00 00 00', '01 00 00 00');
+        $obj->unknown2 = $this->unknownBlock(8);
+        $this->nextEqualHex('00 00 00 00 00 00 ff ff ff ff ff ff ff ff ff ff ff ff');
         $obj->baseObjectName = $this->text();
         $this->nextEqualHex('ff ff ff ff 00 00 00 00 00 00 00 00');
     }
