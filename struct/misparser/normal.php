@@ -398,13 +398,6 @@ class normal extends base
         return $unit;
     }
 
-    protected function ammonitionParserStruct4()
-    {
-        $this->nextEqualHex('00 0e 00 0d 00 01');
-        $ammoSize = $this->int32(); // число боеприпасов, т.е. например номинальные 250 для 14,5мм ленты
-        $this->nextEqualHex('00 01');
-    }
-
     protected function ammonitionParser(array $validOnlyType = null)
     {
         $ammoStructType = $this->int32();
@@ -422,7 +415,9 @@ class normal extends base
 
         switch ($ammoStructType) {
             case 4:
-                $this->ammonitionParserStruct4();
+                $this->nextEqualHex('00 0e 00 0d 00 01');
+                $ammoSize = $this->int32(); // число боеприпасов, т.е. например номинальные 250 для 14,5мм ленты
+                $this->nextEqualHex('00 01');
                 break;
             case 1:
                 // всякая хрень вроде чумодана
