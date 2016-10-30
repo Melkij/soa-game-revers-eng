@@ -519,56 +519,6 @@ class normal extends base
         return $obj;
     }
 
-    protected function humanWeaponParser(human $obj)
-    {
-        return $this->ammonitionParser([2, 34, 66], $obj);
-        $weaponStructType = $this->int32();
-        if ($weaponStructType != 0) {
-            if (in_array($weaponStructType, [2, 34, 66])) {
-                // оружие или граната в руках
-                // по мотивам fnAmmoInnerBoxParser, но различается окончание
-                $ammoObjectId = $this->int32(); // тип объекта
-                $ammoRelationObjectId = $this->int32(); // id, на который потом ссылаются
-                $this->nextEqualHex(
-                    '00 0e 00 0d 00', // этот блок в нескольких видах явным образом повторяется. Может быть, им рулится вес/объём одного элемента для посчёта занятости слота машины/человека?
-                    '00 ff ff ff ff',
-                    '00 01 00 00 00',
-                    //'00 ff 01 01 01'
-                    '00 00 00 00 00'
-                );
-                $this->nextEqualHex('01 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00');
-                $this->nextEqualHex('f4 01 00 00');
-                $this->nextEqualHex(
-                    '40 00 41 00 42 00 41 00 47 00 46 00 00 00 00 00 4a 00 49 00 00 00 4a'
-                    //'ff 01 01 01 ff 01 01 01 ff 01 01 01 00 00 00 00 ff 01 01 01 00 00 01'
-                );
-                $this->nextEqualHex('00', '01');
-                $this->ammonitionParser([ 4 ]);
-                $this->nextEqualHex('00 00 00 00 00');
-                // вот этот хвост иной здесь, относительно fnAmmoInnerBoxParser
-                switch ($obj->type) {
-                    case 3002:
-                        // рыцарь
-                        $this->nextEqualHex('07 00 00 00 07 00 00 00 01 00 00 00');
-                        break;
-                    case 3003:
-                        // нитро
-                        $this->nextEqualHex(
-                                            '00 00 00 00 00 00 00 00 00 00 00 00',
-                                            '04 00 00 00 04 00 00 00 01 00 00 00'
-                        );
-                        break;
-                    default:
-                        $this->nextEqualHex('02 00 00 00 02 00 00 00 01 00 00 00');
-                }
-                $this->assertEquals($obj->humanname, $this->text()); // ??? реально продублировано имя человека в оружии
-                $this->nextEqualHex('04 00 00 00');
-            } else {
-                throw new \LogicException('impossible weapon struct id '.$weaponStructType);
-            }
-        }
-    }
-
     protected function mapObjectVehicle(vehicle $obj)
     {
         // что-то не так со всеми 3 самолётами, после них ещё 5 байт нулей потеряшек
@@ -638,9 +588,7 @@ class normal extends base
         // бинокль
         $this->ammonitionParser([1]);
         // оружие в руках
-        //$this->ammonitionParser([2, 34, 66]);
-
-        $this->humanWeaponParser($obj);
+        $this->ammonitionParser([2, 34, 66], $obj);
 
         $this->nextEqualHex('ff ff ff ff 03 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00');
         $this->level = $this->int32();
