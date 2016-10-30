@@ -163,10 +163,32 @@ class normal extends base
         }
         while($entrysize = $this->int32()) {
             $block = $this->unknownBlock($entrysize);
-            $this->mis->heightsMap1[] = $block;
-            if ($entrysize == 48) {
-                // статична для этой длины?
-                $this->assertEquals('78 da ed c1 31 01 00 00 00 c2 a0 f5 4f 6d 07 6f a0 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 80 d7 00 64 00 00 01', $block);
+            $this->mis->heightsMap2[] = $block;
+            // структуры статичны в рамках своей длины?
+            switch ($entrysize) {
+                case 26:
+                    $this->assertEquals('78 da ed c1 01 0d 00 00 00 c2 a0 f7 4f 6d 0f 07 14 00 00 00 f0 6e 10 00 00 01', $block);
+                    break;
+                case 37:
+                    $this->assertEquals('78 da ed c1 31 01 00 00 00 c2 a0 f5 4f 6d 0d 0f a0 00 00 00 00 00 00 00 00 00 00 00 00 00 80 37 03 38 00 00 01', $block);
+                    break;
+                case 39:
+                    $this->assertEquals('78 da ed c1 31 01 00 00 00 c2 a0 f5 4f 6d 0c 1f a0 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 80 b7 01 40 00 00 01', $block);
+                    break;
+                case 48:
+                    $this->assertEquals('78 da ed c1 31 01 00 00 00 c2 a0 f5 4f 6d 07 6f a0 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 80 d7 00 64 00 00 01', $block);
+                    break;
+                case 51:
+                    $this->assertEquals('78 da ed c1 81 00 00 00 00 c3 a0 f9 53 1f e1 02 55 01 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 cf 00 70 00 00 01', $block);
+                    break;
+                case 52:
+                    $this->assertEquals('78 da ed c1 01 01 00 00 00 80 90 fe af ee 08 0a 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 18 80 00 00 01', $block);
+                    break;
+                case 54:
+                    $this->assertEquals('78 da ed c3 31 0d 00 00 08 03 b0 05 ff a2 f1 b0 07 8e 36 69 02 00 00 00 00 00 00 00 00 00 c0 a5 29 02 00 00 00 00 00 00 00 00 00 00 00 00 00 f0 c7 02 4a ca 00 1b', $block);
+                    break;
+                default:
+                    //var_dump($entrysize, $block);
             }
         }
     }
@@ -260,19 +282,19 @@ class normal extends base
         if ($obj->type >= 1000 and $obj->type < 1100) {
             $this->nextEqualHex('00 00 00 00');
             $this->objectLandscapeMapVersionSpecific();
-            $this->assertEquals('00 00 00 00', $obj->unknown0);
+            //$this->assertEquals('00 00 00 00', $obj->unknown0);
             return $obj->reinitAsLandscape();
         }
 
         if ($this->file->hexahead(16) == '00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00') {
             $this->nextEqualHex('00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00');
-            $this->assertEquals('00 00 00 00', $obj->unknown0);
+            //$this->assertEquals('00 00 00 00', $obj->unknown0);
             return $obj->reinitAsBuild();
         }
 
         $type = $this->unknownBlock(4); // подозрительная штучка, может тут и можно определить, машинка дальше и чулавечек?
         if ($this->file->hexahead(4) != 'ff ff ff ff') {
-            $this->assertEquals('00 00 00 00', $obj->unknown0);
+            //$this->assertEquals('00 00 00 00', $obj->unknown0);
             // всякий хлам на земле
             // пока грязный хак, потом помержить с нормальными уже известными структурами
             // здесь явно прослеживается стандартная структура объектов
@@ -282,9 +304,10 @@ class normal extends base
             $this->assertEquals($ammo->mapuid, $this->int32());
             $this->nextEqualHex('00');
             $ammo->unknownAmmo0 = $this->unknownBlock(4);
-            $this->nextEqualHex('01 00 00 00 00 00');
+            $this->nextEqualHex('01 00 00 00 00 00', '01 14 00 00 00 00');
             switch ($ammo->type) {
                 case 2001:
+                case 2000:
                     // ручное оружие (ак74)
                     $this->nextEqualHex('00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 f4 01 00 00');
                     $this->unknownBlock(24);
@@ -307,7 +330,7 @@ class normal extends base
                     // чумадан
                     break;
                 default:
-                    throw new \LogicException('unknown struct for '.$objectTypeId);
+                    throw new \LogicException('unknown struct for '.$ammo->type . ' '.$ammo->structId);
             }
             $this->nextEqualHex('00 00 00 00');
             return $ammo;
@@ -530,8 +553,6 @@ class normal extends base
             $this->nextEqualHex('00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 f0 55 00 00 0a d7 23 3c 40 08 f4 34 00 00 00 00 01 00');
             $obj->unknownVehicle6 = $this->unknownblock(13);
             $this->nextEqualHex('00 00 80 3f f0 55 00 00 0a d7 23 3c 40 08 f4 34 00 00 00 00 00 00 00 00 00 00 40 42 0f 00 00 00 00 00 00 00 00 80 40 00 00 00 00');
-        } else {
-            $this->assertEquals('00 00 00 80', $obj->unknown0);
         }
     }
 
