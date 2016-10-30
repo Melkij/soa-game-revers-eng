@@ -11,7 +11,6 @@ use struct\mission\objects\vehicle;
 use struct\mission\ammonition\weapon;
 use struct\mission\ammonition\weaponGranate;
 use struct\mission\ammonition\weaponGranateLauncher;
-use struct\mission\ammonition\weaponKnightLauncher;
 use struct\mission\ammonition\other;
 use struct\mission\ammonition\armor;
 use struct\mission\ammonition\ammonition;
@@ -431,11 +430,7 @@ class normal extends base
                 $obj = $this->ammonitionParserWeapon(new weaponGranate, $context);
                 break;
             case 66: // sa7, рпг, м79
-                if ($context and $context instanceof human and $context->isKnight()) {
-                    $obj = $this->ammonitionParserWeapon(new weaponKnightLauncher, $context);
-                } else {
-                    $obj = $this->ammonitionParserWeapon(new weaponGranateLauncher, $context);
-                }
+                $obj = $this->ammonitionParserWeapon(new weaponGranateLauncher, $context);
                 break;
             default:
                 throw new \LogicException('unknown '.$ammoStructType);
