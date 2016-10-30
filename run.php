@@ -25,7 +25,7 @@ foreach (glob('testmis/*.mis') as $file) {
             continue;
         } else {
             $failed[] = basename($file);
-            echo basename($file) . ' ParserError: ' . $e,PHP_EOL;
+            //echo basename($file) . ' ParserError: ' . $e,PHP_EOL;
         }
     }
 }
@@ -34,3 +34,4 @@ if ($failed) {
     echo 'failed files:',PHP_EOL;
     echo join(PHP_EOL, $failed);
 }
+echo PHP_EOL;

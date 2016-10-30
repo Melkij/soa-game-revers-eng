@@ -8,6 +8,12 @@ use struct\mission\mapobject;
 use struct\mission\objects\activeobject;
 use struct\mission\objects\human;
 use struct\mission\objects\vehicle;
+use struct\mission\ammonition\weapon;
+use struct\mission\ammonition\weaponGranate;
+use struct\mission\ammonition\weaponGranateLauncher;
+use struct\mission\ammonition\other;
+use struct\mission\ammonition\armor;
+use struct\mission\ammonition\ammonition;
 
 class normal extends base
 {
@@ -415,54 +421,67 @@ class normal extends base
 
         switch ($ammoStructType) {
             case 4:
+                $obj = new ammonition;
                 $this->nextEqualHex('00 0e 00 0d 00 01');
-                $ammoSize = $this->int32(); // число боеприпасов, т.е. например номинальные 250 для 14,5мм ленты
+                $obj->count = $this->int32(); // число боеприпасов, т.е. например номинальные 250 для 14,5мм ленты
                 $this->nextEqualHex('00 01');
                 break;
             case 1:
                 // всякая хрень вроде чумодана
+                $obj = new other;
                 $this->nextEqualHex('00 ff ff ff ff 01');
-                break;
-            case 2:
-                // человеческое оружие
-                $this->nextEqualHex(
-                    '00 0e 00 0d 00', // этот блок в нескольких видах явным образом повторяется. Может быть, им рулится вес/объём одного элемента для посчёта занятости слота машины/человека?
-                    '00 ff ff ff ff'
-                );
-                $this->nextEqualHex('01 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 f4 01 00 00 40 00 41 00 42 00 41 00 47 00 46 00 00 00 00 00 4a 00 49 00 00 00 4a');
-                $this->unknownblock(1);
-                $this->ammonitionParser([ 4 ]);
-                $this->nextEqualHex('00 00 00 00 00 ff ff ff ff ff ff ff ff ff ff ff ff');
-                $textLenght = $this->text();
-                $this->nextEqualHex('ff ff ff ff');
                 break;
             case 8:
                 $this->nextEqualHex('00 0e 00 0d 00 01');
-                $armor = $this->int32();
-                if (! in_array($armor, [
+                $obj = new armor;
+                $obj->armor = $this->int32();
+                if (! in_array($obj->armor, [
                     40, // лёгкий броник
                     80, // тяжёлый
                 ])) {
                     throw new LogicException('unknown armor size '.$armor);
                 }
                 break;
+            case 2:
+                $obj = new weapon;
+                // человеческое оружие
+                $this->nextEqualHex(
+                    '00 0e 00 0d 00', // этот блок в нескольких видах явным образом повторяется. Может быть, им рулится вес/объём одного элемента для посчёта занятости слота машины/человека?
+                    '00 ff ff ff ff'
+                );
+                $this->nextEqualHex('01 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 f4 01 00 00 40 00 41 00 42 00 41 00 47 00 46 00 00 00 00 00 4a 00 49 00 00 00 4a');
+                $obj->unknownblock = $this->unknownblock(1);
+                $obj->ammo = $this->ammonitionParser([ 4 ]);
+                $this->nextEqualHex('00 00 00 00 00 ff ff ff ff ff ff ff ff ff ff ff ff');
+                $obj->text = $this->text();
+                $this->nextEqualHex('ff ff ff ff');
+                break;
             case 34:
+                $obj = new weaponGranate;
                 $this->nextEqualHex(
                     '00 0e 00 0d 00', // этот блок в нескольких видах явным образом повторяется. Может быть, им рулится вес/объём одного элемента для посчёта занятости слота машины/человека?
                     '00 ff ff ff ff'
                 );
                 $this->nextEqualHex('01 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 f4 01 00 00 40 00 41 00 42 00 41 00 47 00 46 00 00 00 00 00 4a 00 49 00 00 00 4a 01 04 00 00 00');
-                $this->unknownblock(5);
-                $this->nextEqualHex('00 00 00 00 0e 00 0d 00 01 01 00 00 00 00 01 00 00 00 00 00 ff ff ff ff ff ff ff ff ff ff ff ff 0c 75 6e 6b 6e 6f 77 6e 20 6e 61 6d 65 ff ff ff ff');
+                $obj->unknownblock = $this->unknownblock(5);
+                $this->nextEqualHex('00 00 00 00 0e 00 0d 00 01 01 00 00 00 00 01 00 00 00 00 00 ff ff ff ff ff ff ff ff ff ff ff ff');
+                $obj->text = $this->text();
+                $this->nextEqualHex('ff ff ff ff');
                 break;
             case 66:
+                $obj = new weaponGranateLauncher;
                 $this->nextEqualHex('00 e8 03 00 00 01 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 f4 01 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 02 00');
-                $this->unknownblock(2);
-                $this->nextEqualHex('00 00 00 01 00 00 00 00 00 00 00 00 00 ff ff ff ff ff ff ff ff ff ff ff ff 0c 75 6e 6b 6e 6f 77 6e 20 6e 61 6d 65 ff ff ff ff');
+                $obj->unknownblock = $this->unknownblock(2);
+                $this->nextEqualHex('00 00 00 01 00 00 00 00 00 00 00 00 00 ff ff ff ff ff ff ff ff ff ff ff ff');
+                $obj->text = $this->text();
+                $this->nextEqualHex('ff ff ff ff');
                 break;
             default:
                 throw new \LogicException('unknown '.$ammoStructType);
         }
+
+        $obj->relationUid = $ammoRelationObjectId;
+        $obj->type = $ammoObjectId;
     }
 
     protected function mapObjectVehicle(vehicle $obj)
