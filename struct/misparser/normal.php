@@ -539,7 +539,10 @@ class normal extends base
 
         $selectableWeaponsCount = $this->int8();
         for ($i = 0; $i < $selectableWeaponsCount; ++$i) {
-            $obj->maybeSelectableWeapon[] = $this->unknownblock(8); // встречается у хаммеров и вертушек при добавлении навесного оружия
+            $obj->maybeSelectableWeapon[] = [
+                $this->int32(), // наверное, id позиции оружия
+                $this->int32(), // uid оружия?
+            ];
         }
 
         $this->nextEqualHex('00 00 00 00 00 00 80 3f 00 00 00 00 00');
@@ -584,11 +587,11 @@ class normal extends base
         // маркер принадлежности к команде должен быть до этого момента, дальше свою-чужой бинарно идинтичны
 
         // броник
-        $this->ammonitionParser([8]);
+        $obj->inventoryArmor = $this->ammonitionParser([8]);
         // бинокль
-        $this->ammonitionParser([1]);
+        $obj->inventoryBinokle = $this->ammonitionParser([1]);
         // оружие в руках
-        $this->ammonitionParser([2, 34, 66], $obj);
+        $obj->inventoryWeapon = $this->ammonitionParser([2, 34, 66], $obj);
 
         $this->nextEqualHex('ff ff ff ff 03 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00');
         $this->level = $this->int32();
