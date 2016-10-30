@@ -327,26 +327,7 @@ class normal extends base
         $weaponsCount = $this->int32();
         for ($structCounter = 0; $structCounter < $weaponsCount; ++$structCounter) {
             // судя по всему штатное вооружение машин. Но присутствует и для людей
-            // todo, just skip
-            $this->unknownblock(4);
-            $this->unknownblock(4);
-            $this->unknownblock(4);
-            $this->nextEqualHex('00');
-            $this->unknownblock(4); // различается иногда
-            $this->nextEqualHex('01 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 f4 01 00 00');
-            $this->unknownblock(12);
-            $this->nextEqualHex('00 00 00 00');
-            $this->unknownblock(8);
-            $this->ammonitionParser([4]);
-            $this->nextEqualHex('00 00 00 00 00');
-            $this->assertEquals($obj->mapuid, $this->int32()); // зачем-то повторяется аж сразу 2 раза
-            $this->assertEquals($obj->mapuid, $this->int32());
-            $this->nextEqualHex(
-                'ff ff ff ff',
-                '02 00 00 00'
-            );
-            $objectName = $this->text(); // TRES_OBJECTS_UNIT_*
-            $this->unknownblock(4);
+            $this->ammonitionParser([2,66], $obj);
         }
 
         $ammoCount = $this->int32();
@@ -467,23 +448,17 @@ class normal extends base
 
     protected function ammonitionParserWeapon($obj, mapobject $context = null)
     {
-        if ($obj instanceof weaponGranateLauncher) {
-            $this->nextEqualHex('00 e8 03 00 00');
-        } else {
-            $this->nextEqualHex(
-                '00 0e 00 0d 00',
-                '00 ff ff ff ff',
-                '00 01 00 00 00',
-                //'00 ff 01 01 01'
-                '00 00 00 00 00'
-            );
-        }
+        $this->nextEqualHex('00');
+        $this->unknownblock(4);
 
         $this->nextEqualHex('01 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 f4 01 00 00');
 
-        if ($obj instanceof weaponGranateLauncher) {
-            $this->nextEqualHex('00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 02 00');
-            $obj->unknownblock = $this->unknownblock(2);
+        if ($context and get_class($context) == activeobject::class) {
+            $obj->unknownblock = $this->unknownblock(24);
+            $obj->ammo = $this->ammonitionParser([ 4 ]);
+        } elseif ($obj instanceof weaponGranateLauncher and ! $context) {
+            $this->nextEqualHex('00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00');
+            $obj->unknownblock = $this->unknownblock(4);
             $this->nextEqualHex('00 00 00 01 00 00 00 00');
         } else {
             $this->nextEqualHex('40 00 41 00 42 00 41 00 47 00 46 00 00 00 00 00 4a 00 49 00 00 00 4a');
@@ -492,24 +467,29 @@ class normal extends base
         }
 
         $this->nextEqualHex('00 00 00 00 00');
-        if ($context and $context instanceof human) {
-            switch ($context->type) {
-                case 3002:
-                    // рыцарь
-                    $this->nextEqualHex('07 00 00 00 07 00 00 00 01 00 00 00');
-                    break;
-                case 3003:
-                    // нитро
-                    $this->nextEqualHex(
-                        '00 00 00 00 00 00 00 00 00 00 00 00',
-                        '04 00 00 00 04 00 00 00 01 00 00 00'
-                    );
-                    break;
-                default:
-                    $this->nextEqualHex('02 00 00 00 02 00 00 00 01 00 00 00');
+        if ($context) {
+            $this->assertEquals($context->mapuid, $this->int32()); // зачем-то повторяется аж сразу 2 раза
+            $this->assertEquals($context->mapuid, $this->int32());
+            if ($context instanceof human) {
+                $this->nextEqualHex('01 00 00 00', '00 00 00 00');
+            } else {
+                $this->nextEqualHex(
+                    'ff ff ff ff',
+                    '02 00 00 00'
+                );
             }
-            $this->assertEquals($context->humanname, $this->text()); // ??? реально продублировано имя человека в оружии
-            $this->nextEqualHex('04 00 00 00');
+
+            $obj->text = $this->text();
+
+            if ($context instanceof human) {
+                $this->nextEqualHex('04 00 00 00');
+                $this->assertEquals($context->humanname, $obj->text); // ??? реально продублировано имя человека в оружии
+            } else {
+                $this->nextEqualHex(
+                    '0d 00 00 00',
+                    '00 00 00 00'
+                );
+            }
         } else {
             $this->nextEqualHex('ff ff ff ff ff ff ff ff ff ff ff ff');
             $obj->text = $this->text();
