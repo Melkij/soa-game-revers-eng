@@ -97,4 +97,9 @@ abstract class base
     {
         return $this->file->hexread($len);
     }
+
+    protected function hexaheaduntileof()
+    {
+        return $this->file->hexahead( $this->file->getMaxPosition() - $this->file->getPosition() );
+    }
 }

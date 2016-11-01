@@ -302,44 +302,24 @@ class normal extends base
         if ($this->file->hexahead(4) != 'ff ff ff ff') {
             //$this->assertEquals('00 00 00 00', $obj->unknown0);
             // всякий хлам на земле
-            // пока грязный хак, потом помержить с нормальными уже известными структурами
-            // здесь явно прослеживается стандартная структура объектов
-            $ammo = $obj->reinitAsAmmunition();
-            $ammo->structId = $this->int32();
-            $ammo->equipId = $this->int32();
-            $this->int32();
-            $this->nextEqualHex('00');
-            $ammo->unknownAmmo0 = $this->unknownBlock(4);
-            $this->nextEqualHex('01 00 00 00 00 00', '01 14 00 00 00 00');
-            switch ($ammo->type) {
-                case 2001:
-                case 2000:
-                    // ручное оружие (ак74)
-                    $this->nextEqualHex('00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 f4 01 00 00');
-                    $this->unknownBlock(24);
-                    $this->nextEqualHex('00 00 00 00 00 00 00 00 00 ff ff ff ff ff ff ff ff ff ff ff ff 0c 75 6e 6b 6e 6f 77 6e 20 6e 61 6d 65 ff ff ff ff 00 00 00 00 00');
-                    break;
-                case 2037:
-                    // ползучий мин
-                    $this->unknownBlock(4);
-                    $this->nextEqualHex('00 ff ff ff ff 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00');
-                    break;
-                case 2033:
-                    // какой-то ящик
-                    $this->nextEqualHex('00 00 ed 3e');
-                    $inBoxCount = $this->int32();
-                    for ($structCounter = 0; $structCounter < $inBoxCount; ++$structCounter) {
-                        $this->ammonitionParser();
-                    }
-                    break;
-                case 2007:
-                    // чумадан
-                    break;
-                default:
-                    throw new ParserError('unknown struct for '.$ammo->type . ' '.$ammo->structId);
+            $baseAmmo = $this->ammonitionParser();
+            $this->nextEqualHex('00 00 00 00 00 00 00');
+            if ($this->nextEqualHex('00 00', 'ed 3e') == '00 00') {
+                // всякий полезный хлам на земле
+                $ammo = $obj->reinitAsAmmunition();
+                $ammo->ammonition = $baseAmmo;
+                return $ammo;
+            } else {
+                // а это ящик со снаряжением
+                $box = $obj->reinitAsAmmunitionBox();
+                $box->baseObject = $baseAmmo;
+                $inBoxCount = $this->int32();
+                for ($structCounter = 0; $structCounter < $inBoxCount; ++$structCounter) {
+                    $box->content[] = $this->ammonitionParser();
+                }
+                $this->nextEqualHex('00 00 00 00');
+                return $box;
             }
-            $this->nextEqualHex('00 00 00 00');
-            return $ammo;
         }
         $this->nextEqualHex('ff ff ff ff');
         // хуманы и мафынки
@@ -477,18 +457,20 @@ class normal extends base
 
         $this->nextEqualHex('01 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 f4 01 00 00');
 
-        if ($context and get_class($context) == activeobject::class) {
-            $obj->unknownblock = $this->unknownblock(24);
-            $obj->ammo = $this->ammonitionParser([ 4 ]);
-        } elseif ($obj instanceof weaponGranateLauncher and ! $context) {
-            $this->nextEqualHex('00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00');
-            $obj->unknownblock = $this->unknownblock(4);
-            $this->nextEqualHex('00 00 00 01 00 00 00 00');
-        } else {
-            $this->nextEqualHex('40 00 41 00 42 00 41 00 47 00 46 00 00 00 00 00 4a 00 49 00 00 00 4a');
-            $this->nextEqualHex('00', '01');
-            $obj->ammo = $this->ammonitionParser([ 4 ]); // интересно что ручные гранаты парсятся тоже так
-        }
+        $obj->unknownblock = $this->unknownblock(24);
+        $obj->ammo = $this->ammonitionParser([ 4 ]);
+        //~ if ($context and get_class($context) == activeobject::class) {
+            //~ $obj->unknownblock = $this->unknownblock(24);
+            //~ $obj->ammo = $this->ammonitionParser([ 4 ]);
+        //~ } elseif ($obj instanceof weaponGranateLauncher and ! $context) {
+            //~ $this->nextEqualHex('00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00');
+            //~ $obj->unknownblock = $this->unknownblock(4);
+            //~ $this->nextEqualHex('00 00 00 01 00 00 00 00');
+        //~ } else {
+            //~ $this->nextEqualHex('40 00 41 00 42 00 41 00 47 00 46 00 00 00 00 00 4a 00 49 00 00 00 4a');
+            //~ $this->nextEqualHex('00', '01');
+            //~ $obj->ammo = $this->ammonitionParser([ 4 ]); // интересно что ручные гранаты парсятся тоже так
+        //~ }
 
         $this->nextEqualHex('00 00 00 00 00');
         if ($context) {
@@ -731,6 +713,15 @@ class normal extends base
 
         $this->nextEqualHex('00 00 00 00 02 00 00 00 00 00 00 00');
         $this->mis->unknownBlockEnding = $this->unknownBlock(1);
-        $this->nextEqualHex('00 00 00 00 00 00 00 01 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 01 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00');
+        $this->nextEqualHex('00 00 00 00 00 00 00 01 00 00 00 00 00 00 00');
+        $musicCount = $this->int32();
+        for ($i = 0; $i < $musicCount; ++$i) {
+            $this->mis->cdTrackInMission[] = $this->text();
+        }
+        $musicCount = $this->int32();
+        for ($i = 0; $i < $musicCount; ++$i) {
+            $this->mis->ambienteTags[] = $this->text();
+        }
+        $this->nextEqualHex('01 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00');
     }
 }

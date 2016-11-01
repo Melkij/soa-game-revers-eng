@@ -56,6 +56,9 @@ class Mission
     public $heightsMap1 = [];
     public $heightsMap2 = [];
 
+    public $cdTrackInMission = []; // CD Track 2.mp3
+    public $ambienteTags = []; // ambiente_tag.mp3
+
     protected $textures = [];
     protected $objects = [];
     protected $regions = [];

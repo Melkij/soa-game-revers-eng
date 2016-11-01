@@ -5,6 +5,7 @@ namespace struct\mission;
 use struct\mission\objects\landscape;
 use struct\mission\objects\build;
 use struct\mission\objects\ammunition;
+use struct\mission\objects\ammunitionBox;
 use struct\mission\objects\activeobject;
 
 class mapobject
@@ -49,6 +50,10 @@ class mapobject
     public function reinitAsAmmunition()
     {
         return $this->reinit(new ammunition);
+    }
+    public function reinitAsAmmunitionBox()
+    {
+        return $this->reinit(new ammunitionBox);
     }
     public function reinitAsActiveObject()
     {
