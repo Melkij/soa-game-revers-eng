@@ -282,7 +282,7 @@ class normal extends base
             } catch (\Exception $e) {
                 echo 'obj '.$i.' of '.$objectsCount,PHP_EOL;
                 var_dump($this->file->getPosition());
-                echo $this->file->hexahead(2000),PHP_EOL;
+                echo $this->file->hexahead(200),PHP_EOL;
                 throw $e;
             }
             $this->mis->addObject($obj->mapuid, $object);
@@ -304,13 +304,7 @@ class normal extends base
 
         $type = $this->unknownBlock(4); // подозрительная штучка, может тут и можно определить, машинка дальше и чулавечек?
 
-        if ($this->file->hexahead(4) != 'ff ff ff ff') {
-            if ($type != '00 00 00 00') {
-                $this->nextEqualHex('05 00 00 00 00 00 00 00 00 00 00 00 00 01 40 42 0f 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 ff 01 ff 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 01 1e 00 00 00 02 00 00 00 00 00 00 00 00 00 00 00 02 00 00 00 00 00 00 00 80 bf 00 00 80 bf 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 01 00 00 80 bf 00 00 80 bf b8 0b 00 00 e8 03 00 00 b8 0b 00 00 b8 0b 00 00 a0 0f 00 00 e8 03 00 00 00 00 00 00 00 af 00 00 00 00 38 00 00 00 00 00 00 00 49 00 00 00 3c 00 00 00 39 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 80 3f 00 00 00 00 00 00');
-                // very strange object in original mis1
-                return $obj;
-            }
-
+        if ($type == '00 00 00 00' and $this->file->hexahead(4) != 'ff ff ff ff') {
             // всякий хлам на земле
             $baseAmmo = $this->ammonitionParser(null, $obj);
 
@@ -351,7 +345,8 @@ class normal extends base
                     return $ammo;
             }
         }
-        $this->nextEqualHex('ff ff ff ff');
+
+        $this->unknownblock(4);
         // хуманы и мафынки
 
         return $this->mapObjectActive($obj->reinitAsActiveObject());
@@ -378,8 +373,8 @@ class normal extends base
         $obj->unknownActive1 = $this->unknownblock(2);
         $this->nextEqualHex('ff 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00');
         $obj->unknownActive2 = $this->unknownblock(1);
-        $this->nextEqualHex('00 00 00 00 00 00 00 00');
-        $obj->unknownActive3 = $this->unknownblock(1);
+        $this->nextEqualHex('00 00 00 00');
+        $obj->unknownActive3 = $this->unknownblock(5);
 
         $nextStructType = $this->nextEqualHex(
             '01 00 00 00', //животные?
@@ -512,17 +507,8 @@ class normal extends base
                 $this->assertEquals($context->mapuid, $this->int32()); // зачем-то повторяется аж сразу 2 раза
                 $this->assertEquals($context->mapuid, $this->int32());
             }
-            if ($context instanceof human) {
-                $this->unknownBlock(4);
-            } else {
-                $this->nextEqualHex(
-                    'ff ff ff ff',
-                    '01 00 00 00',
-                    '02 00 00 00',
-                    '04 00 00 00'
-                );
-            }
 
+            $this->unknownBlock(4);
             $obj->text = $this->text();
 
             if ($context instanceof human) {
@@ -608,9 +594,7 @@ class normal extends base
         $this->nextEqualHex('00 50 c3 c7 00 50 c3 c7');
         $this->assertEquals($inUnit, $this->int8());
         $this->nextEqualHex('00 00 00 00 00 02 00 00 00 00 00 80 bf 00 00 80 bf 00 00 00 00');
-        $obj->humanUnknown1 = $this->unknownblock(6);
-        $this->nextEqualHex('00 00 00 00 00 00 00');
-        $obj->humanUnknown2 = $this->unknownblock(4);
+        $obj->humanUnknown1 = $this->unknownblock(17);
         $this->nextEqualHex('01 00 00 00 00 00 00 00 00 00 00 00');
         // маркер принадлежности к команде должен быть до этого момента, дальше свою-чужой бинарно идинтичны
 
