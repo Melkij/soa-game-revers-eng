@@ -24,6 +24,7 @@ class normal extends base
 
     final protected function process()
     {
+        $this->assertEquals(0, $this->file->getPosition());
         $this->nextEqualHex('38 f9 b3 0a 62 93 d1 11 9a 2b 08 00 00 30 05 12');
         $this->nextEqualHex(static::versionMarker());
         $this->mis->title = $this->text();
@@ -52,6 +53,7 @@ class normal extends base
         $this->blockBeforeObjects();
 
         $this->objects();
+        //throw new ParserError('not implement');
         $this->nextEqualHex('01 00 00 00');
         $this->scriptsAreaParser();
         $this->endArea();
@@ -275,7 +277,14 @@ class normal extends base
             $this->nextEqualHex('ff ff ff ff');
             $this->objectHeaderBlock2($obj);
 
-            $object = $this->concreteObjectParser($obj);
+            try {
+                $object = $this->concreteObjectParser($obj);
+            } catch (\Exception $e) {
+                echo 'obj '.$i.' of '.$objectsCount,PHP_EOL;
+                var_dump($this->file->getPosition());
+                echo $this->file->hexahead(2000),PHP_EOL;
+                throw $e;
+            }
             $this->mis->addObject($obj->mapuid, $object);
         }
     }
@@ -285,19 +294,23 @@ class normal extends base
         if ($obj->type >= 1000 and $obj->type < 1100) {
             $this->nextEqualHex('00 00 00 00');
             $this->objectLandscapeMapVersionSpecific();
-            //$this->assertEquals('00 00 00 00', $obj->unknown0);
             return $obj->reinitAsLandscape();
         }
 
         if ($this->file->hexahead(16) == '00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00') {
             $this->nextEqualHex('00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00');
-            //$this->assertEquals('00 00 00 00', $obj->unknown0);
             return $obj->reinitAsBuild();
         }
 
         $type = $this->unknownBlock(4); // подозрительная штучка, может тут и можно определить, машинка дальше и чулавечек?
+
         if ($this->file->hexahead(4) != 'ff ff ff ff') {
-            //$this->assertEquals('00 00 00 00', $obj->unknown0);
+            if ($type != '00 00 00 00') {
+                $this->nextEqualHex('05 00 00 00 00 00 00 00 00 00 00 00 00 01 40 42 0f 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 ff 01 ff 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 01 1e 00 00 00 02 00 00 00 00 00 00 00 00 00 00 00 02 00 00 00 00 00 00 00 80 bf 00 00 80 bf 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 01 00 00 80 bf 00 00 80 bf b8 0b 00 00 e8 03 00 00 b8 0b 00 00 b8 0b 00 00 a0 0f 00 00 e8 03 00 00 00 00 00 00 00 af 00 00 00 00 38 00 00 00 00 00 00 00 49 00 00 00 3c 00 00 00 39 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 80 3f 00 00 00 00 00 00');
+                // very strange object in original mis1
+                return $obj;
+            }
+
             // всякий хлам на земле
             $baseAmmo = $this->ammonitionParser(null, $obj);
 
@@ -500,7 +513,7 @@ class normal extends base
                 $this->assertEquals($context->mapuid, $this->int32());
             }
             if ($context instanceof human) {
-                $this->nextEqualHex('01 00 00 00', '00 00 00 00');
+                $this->unknownBlock(4);
             } else {
                 $this->nextEqualHex(
                     'ff ff ff ff',
@@ -537,7 +550,8 @@ class normal extends base
     {
         // что-то не так со всеми 3 самолётами, после них ещё 5 байт нулей потеряшек
         // байк, 2c3, btr80 парсятся
-        $this->nextEqualHex('00 00 00 00 80 bf 00 00 80 bf 00 00 00 00 00 00 00 00 00 00 00');
+        $this->unknownblock(1);
+        $this->nextEqualHex('00 00 00 80 bf 00 00 80 bf 00 00 00 00 00 00 00 00 00 00 00');
         $this->nextEqualHex('00 00 00 00');
         $obj->unknownVehicle0 = $this->unknownblock(1);
         $this->nextEqualHex('00 00 80 bf 00 00 80 bf');
