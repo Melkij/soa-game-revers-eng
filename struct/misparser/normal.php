@@ -53,7 +53,7 @@ class normal extends base
         $this->blockBeforeObjects();
 
         $this->objects();
-        //throw new ParserError('not implement');
+        throw new ParserError('not implement');
         $this->nextEqualHex('01 00 00 00');
         $this->scriptsAreaParser();
         $this->endArea();
@@ -438,7 +438,8 @@ class normal extends base
         switch ($ammoStructType) {
             case 1:
                 $obj = new other;
-                $this->nextEqualHex('00 ff ff ff ff 01', '00 00 00 00 00 01');
+                //$this->nextEqualHex('00 ff ff ff ff 01', '00 00 00 00 00 01');
+                $this->unknownBlock(6);
                 break;
             case 4:
                 $obj = new ammonition;
@@ -607,8 +608,8 @@ class normal extends base
 
         $this->unknownblock(4);
         $this->nextEqualHex('03 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00');
-        $this->level = $this->int32();
-        $this->experience = $this->int32(); // удвоенное число необходимых убийств для этого уровня. Возможно, убитый человек +2, животное +1
+        $obj->level = $this->int32();
+        $obj->experience = $this->int32(); // удвоенное число необходимых убийств для этого уровня. Возможно, убитый человек +2, животное +1
         $this->nextEqualHex('00 00 00 00');
         $obj->humanUnknown3 = $this->unknownblock(4+1);
         $this->nextEqualHex('00 00 00 00 00 00 00 00 00 00 00 01 0b 00 00 00');
@@ -621,6 +622,7 @@ class normal extends base
         $obj->skill2 = $this->int32();
         $obj->humanUnknown6 = $this->unknownblock(2);
         $this->nextEqualHex('00 00 00 00 00 00 00 00 00 00 00 00');
+
         $gender = $this->int8();
         switch ($gender) {
             case 0: // 0 - м, 1 - ж
@@ -633,8 +635,8 @@ class normal extends base
                 throw new LogicException('gender ' . $gender . ' unknown');
         }
 
-        $this->nextEqualHex('00 00 00 00');
-        $this->humanUnknown7 = $this->unknownblock(1);
+        $this->nextEqualHex('00 00 00');
+        $obj->humanUnknown7 = $this->unknownblock(2);
         $this->nextEqualHex('0b 00 00');
         $marker = $this->int8();
         if ($marker == 1) {
