@@ -53,11 +53,8 @@ class normal extends base
 
         $this->objects();
         $this->nextEqualHex('01 00 00 00');
-        $this->regions();
-        $this->afterRegionsBlock();
-        $this->scripts();
-        $this->nextEqualHex('00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00');
-        $this->endFile();
+        $this->scriptsAreaParser();
+        $this->endArea();
         if (! $this->file->isEof()) {
             throw new ParserError('not eof!');
         }
@@ -681,13 +678,20 @@ class normal extends base
         }
     }
 
-    protected function afterRegionsBlock()
+    protected function scriptsTimers()
     {
-        //~ echo $this->hexaheaduntileof(),PHP_EOL;
-        $this->nextEqualHex('02 00 00 00 00 00 00 00 00 00 00 00 24 00 00 00');
-        //~ $this->nextEqualHex('02 00 00 00');
-        //~ $blocksCount = $this->int32();
-        //~ $this->nextEqualHex('00 00 00 00 24 00 00 00');
+        $this->nextEqualHex('02 00 00 00');
+        $timersCount = $this->int32();
+        for ($i = 0; $i < $timersCount; ++$i) {
+            $timer = $this->mis->addScriptTimer();
+            $timer->id = $i;
+            $this->assertEquals($i, $this->int32());
+            $timer->unknown = $this->unknownBlock(10);
+            $timer->name = $this->text();
+            $this->nextEqualHex('00 00 00 00');
+        }
+        $this->assertEquals($timersCount, $this->int32());
+        $this->nextEqualHex('24 00 00 00');
     }
 
     protected function scripts()
@@ -731,9 +735,10 @@ class normal extends base
         }
     }
 
-    protected function endFile()
+    protected function endArea()
     {
-        $this->nextEqualHex('64 00 00 00 00 00 00 00 02 00 00 00 00 00 00 00');
+        $this->nextEqualHex('64 00 00 00');
+        $this->nextEqualHex('00 00 00 00 02 00 00 00 00 00 00 00');
         $this->nextEqualHex('07 00 00 00');
 
         if ($this->mis->getScriptsCount()) {
@@ -754,5 +759,13 @@ class normal extends base
             $this->mis->ambienteTags[] = $this->text();
         }
         $this->nextEqualHex('01 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00');
+    }
+
+    protected function scriptsAreaParser()
+    {
+        $this->regions();
+        $this->scriptsTimers();
+        $this->scripts();
+        $this->nextEqualHex('00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00');
     }
 }

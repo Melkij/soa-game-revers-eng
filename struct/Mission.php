@@ -4,6 +4,7 @@ namespace struct;
 use struct\mission\party;
 use struct\mission\texture;
 use struct\mission\script;
+use struct\mission\scriptTimer;
 use struct\mission\region;
 use struct\mission\mapobject;
 
@@ -63,6 +64,7 @@ class Mission
     protected $objects = [];
     protected $regions = [];
     protected $scripts = [];
+    protected $scriptTimers = [];
     protected $parties = [];
 
     public function addParty($id)
@@ -108,6 +110,13 @@ class Mission
     {
         $script = new script;
         $this->scripts[] = $script;
+        return $script;
+    }
+
+    public function addScriptTimer()
+    {
+        $script = new scriptTimer;
+        $this->scriptTimers[] = $script;
         return $script;
     }
 

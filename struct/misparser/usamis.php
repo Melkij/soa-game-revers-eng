@@ -24,12 +24,15 @@ class usamis extends normal
         $this->nextEqualHex('01 00 00 00');
     }
 
-    protected function afterRegionsBlock()
+    protected function scriptsAreaParser()
     {
-        $this->nextEqualHex('01 00 00 00 00 00 00 00 00 00 00 00 07 00 00 00');
+        $this->regions();
+        $this->nextEqualHex('01 00 00 00 00 00 00 00 00 00 00 00 07 00 00 00'); // no timers
+        $this->nextEqualHex('00 00 00 00 00 00 00 00 01 00 00 00 00 00 00 00 00 00 00 00'); // no scripts
+        $this->nextEqualHex('00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00'); // no switchs and pings
     }
 
-    protected function endFile()
+    protected function endArea()
     {
         $this->nextEqualHex('64 00 00 00 00 00 00 00 01 00 00 00 00 00 00 00 01 00 00 00 00 00 00 00 01 00 00 00 00 00 00 00');
     }
