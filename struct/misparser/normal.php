@@ -303,11 +303,31 @@ class normal extends base
             //$this->assertEquals('00 00 00 00', $obj->unknown0);
             // всякий хлам на земле
             $baseAmmo = $this->ammonitionParser();
+
+            switch ($baseAmmo->type) {
+                case 235:
+                    // ползучая мина
+                    $ammo = $obj->reinitAsZnrMine();
+                    $ammo->ammonition = $baseAmmo;
+                    $this->nextEqualHex('00 00 00 00 00');
+                    $ammo->unknownMineBlock = $this->unknownBlock(4);
+                    $this->nextEqualHex('00 ff ff ff ff 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00');
+                    return $ammo;
+                case 225: //динамит
+                    $ammo = $obj->reinitAsAmmunition();
+                    $ammo->ammonition = $baseAmmo;
+                    $this->nextEqualHex('00 00 00 00 00 8f 00 8e 00 00 00 00 00 10 27 00 00 00 00 00 48 41 00 00 48 41 00 ff ff ff ff 00 00 00 00');
+                    return $ammo;
+            }
+
             $this->nextEqualHex('00 00 00 00 00 00 00');
             if ($this->nextEqualHex('00 00', 'ed 3e') == '00 00') {
                 // всякий полезный хлам на земле
                 $ammo = $obj->reinitAsAmmunition();
                 $ammo->ammonition = $baseAmmo;
+                if ($ammo->ammonition->type == 223) {
+                    $this->nextEqualHex('00 00 00 00 00');
+                }
                 return $ammo;
             } else {
                 // а это ящик со снаряжением

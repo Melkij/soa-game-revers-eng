@@ -7,6 +7,7 @@ use struct\mission\objects\build;
 use struct\mission\objects\ammunition;
 use struct\mission\objects\ammunitionBox;
 use struct\mission\objects\activeobject;
+use struct\mission\objects\znrMine;
 
 class mapobject
 {
@@ -54,6 +55,10 @@ class mapobject
     public function reinitAsAmmunitionBox()
     {
         return $this->reinit(new ammunitionBox);
+    }
+    public function reinitAsZnrMine()
+    {
+        return $this->reinit(new znrMine);
     }
     public function reinitAsActiveObject()
     {
