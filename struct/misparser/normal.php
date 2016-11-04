@@ -327,7 +327,7 @@ class normal extends base
                     $this->unknownBlock(9);
                     $inBoxCount = $this->int32();
                     for ($structCounter = 0; $structCounter < $inBoxCount; ++$structCounter) {
-                        $box->content[] = $this->ammonitionParser();
+                        $box->content[] = $this->ammonitionParser(null, $box);
                     }
                     $this->nextEqualHex('00 00 00 00');
                     return $box;
@@ -421,7 +421,7 @@ class normal extends base
         }
 
         if (is_array($validOnlyType) and !in_array($ammoStructType, $validOnlyType)) {
-            throw new \LogicException('ammo struct '.$ammoStructType.' not valid here');
+            throw new ParserError('ammo struct '.$ammoStructType.' not valid here');
         }
 
         $ammoObjectId = $this->int32(); // тип объекта
@@ -434,19 +434,20 @@ class normal extends base
                 break;
             case 4:
                 $obj = new ammonition;
-                $this->nextEqualHex('00 0e 00 0d 00 01');
+                $this->unknownBlock(6);
+                //$this->nextEqualHex('00 0e 00 0d 00 01'); // редактор вроде проставляет константно вот так, но даже пересохранённые оригинальные миссии - по-разному
                 $obj->count = $this->int32(); // число боеприпасов, т.е. например номинальные 250 для 14,5мм ленты
                 $this->nextEqualHex('00 01');
                 break;
             case 8:
-                $this->nextEqualHex('00 0e 00 0d 00 01');
+                $this->nextEqualHex('00 0e 00 0d 00 01', '00 00 00 00 00 01', '00 14 00 00 00 01');
                 $obj = new armor;
                 $obj->armor = $this->int32();
                 if (! in_array($obj->armor, [
                     40, // лёгкий броник
                     80, // тяжёлый
                 ])) {
-                    throw new LogicException('unknown armor size '.$armor);
+                    throw new ParserError('unknown armor size '.$armor);
                 }
                 break;
             case 2:  // ручное оружие, ак-74, рпк, узи и др
@@ -459,7 +460,7 @@ class normal extends base
                 $obj = $this->ammonitionParserWeapon(new weaponGranateLauncher, $context);
                 break;
             default:
-                throw new \LogicException('unknown '.$ammoStructType);
+                throw new ParserError('unknown '.$ammoStructType);
         }
 
         $obj->relationUid = $ammoRelationObjectId;
