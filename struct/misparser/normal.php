@@ -257,35 +257,39 @@ class normal extends base
 
     protected function objects()
     {
+        $prevObj = null;
         $objectsCount = $this->int32();
         for ($i = 0; $i < $objectsCount; ++$i) {
-            $obj = new mapobject;
-            $obj->type = $this->int32();
-            $obj->mapuid = $this->int32();
-            $obj->posX = $this->float();
-            $obj->posY = $this->float();
-            $obj->unknown0 = $this->unknownBlock(4);
-            $obj->rotate = $this->float();
-            $obj->scale = $this->float(); // размер камней, деревьев. 1 для всех остальных
-            $this->objectHeaderConst();
-            $obj->unknown1 = $this->unknownBlock(1);
-            $this->nextEqualHex('00 00 00 01');
-            $obj->maxHealth = $this->int32();
-            $obj->currentHealth = $this->int32();
-            $obj->maxArmor = $this->int32();
-            $obj->currentArmor = $this->int32();
-            $this->nextEqualHex('ff ff ff ff');
-            $this->objectHeaderBlock2($obj);
-
             try {
+                $obj = new mapobject;
+                $obj->type = $this->int32();
+                $obj->mapuid = $this->int32();
+                $obj->posX = $this->float();
+                $obj->posY = $this->float();
+                $obj->unknown0 = $this->unknownBlock(4);
+                $obj->rotate = $this->float();
+                $obj->scale = $this->float(); // размер камней, деревьев. 1 для всех остальных
+                $this->objectHeaderConst();
+                $obj->unknown1 = $this->unknownBlock(1);
+                $this->nextEqualHex('00 00 00 01');
+                $obj->maxHealth = $this->int32();
+                $obj->currentHealth = $this->int32();
+                $obj->maxArmor = $this->int32();
+                $obj->currentArmor = $this->int32();
+                $this->nextEqualHex('ff ff ff ff');
+                $this->objectHeaderBlock2($obj);
+
                 $object = $this->concreteObjectParser($obj);
             } catch (\Exception $e) {
                 echo 'obj '.$i.' of '.$objectsCount,PHP_EOL;
-                var_dump($this->file->getPosition());
+                //var_dump($this->file->getPosition(), $obj);
+                //echo 'prev obj: ';
+                //var_dump($obj->type);
                 echo $this->file->hexahead(200),PHP_EOL;
                 throw $e;
             }
             $this->mis->addObject($obj->mapuid, $object);
+            $prevObj = $object;
         }
     }
 
@@ -506,24 +510,29 @@ class normal extends base
                 $this->nextEqualHex('ff ff ff ff ff ff ff ff');
             } else {
                 $this->assertEquals($context->mapuid, $this->int32()); // зачем-то повторяется аж сразу 2 раза
-                $this->assertEquals($context->mapuid, $this->int32());
+                if ($this->file->hexahead(4) == 'ff ff ff ff') {
+                    $this->nextEqualHex('ff ff ff ff');
+                } else {
+                    $this->assertEquals($context->mapuid, $this->int32());
+                }
             }
 
             $this->unknownBlock(4);
             $obj->text = $this->text();
+            $this->unknownBlock(4);
 
-            if ($context instanceof human) {
-                $this->nextEqualHex('04 00 00 00');
-                //$this->assertEquals($context->humanname, $obj->text); // ??? реально продублировано имя человека в оружии
-                // но в mis2 не совпадает иногда
-            } else {
-                $this->nextEqualHex(
-                    '0d 00 00 00',
-                    '04 00 00 00',
-                    '00 00 00 00',
-                    'ff ff ff ff'
-                );
-            }
+            //~ if ($context instanceof human) {
+                //~ $this->nextEqualHex('04 00 00 00');
+                //~ //$this->assertEquals($context->humanname, $obj->text); // ??? реально продублировано имя человека в оружии
+                //~ // но в mis2 не совпадает иногда
+            //~ } else {
+                //~ $this->nextEqualHex(
+                    //~ '0d 00 00 00',
+                    //~ '04 00 00 00',
+                    //~ '00 00 00 00',
+                    //~ 'ff ff ff ff'
+                //~ );
+            //~ }
         } else {
             $this->nextEqualHex('ff ff ff ff ff ff ff ff ff ff ff ff');
             $obj->text = $this->text();
