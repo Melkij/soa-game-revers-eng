@@ -347,8 +347,8 @@ class normal extends base
     protected function mapObjectActive(activeobject $obj)
     {
         $this->nextEqualHex('00 00 00 00 00 00 00 00 00');
-        $obj->unknownActive0 = $this->unknownblock(1);
-        $this->nextEqualHex('40 42 0f 00 00 00 00 00');
+        $obj->unknownActive0 = $this->unknownblock(5);
+        $this->nextEqualHex('00 00 00 00');
         $weaponsCount = $this->int32();
         for ($structCounter = 0; $structCounter < $weaponsCount; ++$structCounter) {
             // судя по всему штатное вооружение машин. Но присутствует и для людей
@@ -440,7 +440,8 @@ class normal extends base
                 $this->nextEqualHex('00 01');
                 break;
             case 8:
-                $this->nextEqualHex('00 0e 00 0d 00 01', '00 00 00 00 00 01', '00 14 00 00 00 01');
+                $this->unknownBlock(6);
+                //$this->nextEqualHex('00 0e 00 0d 00 01', '00 00 00 00 00 01', '00 14 00 00 00 01');
                 $obj = new armor;
                 $obj->armor = $this->int32();
                 if (! in_array($obj->armor, [
@@ -503,6 +504,7 @@ class normal extends base
             } else {
                 $this->nextEqualHex(
                     'ff ff ff ff',
+                    '01 00 00 00',
                     '02 00 00 00',
                     '04 00 00 00'
                 );
@@ -512,7 +514,8 @@ class normal extends base
 
             if ($context instanceof human) {
                 $this->nextEqualHex('04 00 00 00');
-                $this->assertEquals($context->humanname, $obj->text); // ??? реально продублировано имя человека в оружии
+                //$this->assertEquals($context->humanname, $obj->text); // ??? реально продублировано имя человека в оружии
+                // но в mis2 не совпадает иногда
             } else {
                 $this->nextEqualHex(
                     '0d 00 00 00',
@@ -545,7 +548,9 @@ class normal extends base
         $obj->unknownVehicle3 = $this->unknownBlock(1); // возможно метка, есть ли люди внутри
         $obj->unknownVehicle4 = $this->unknownBlock(20);
         $obj->unknownVehicle5 = $this->unknownblock(1);
-        $this->nextEqualHex('00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00');
+        $this->nextEqualHex('00 00 00 00 00 00 00');
+        $this->unknownblock(4);
+        $this->nextEqualHex('00 00 00 00 00 00 00 00 00 00 00 00 00');
         $this->nextEqualHex('00 00 00 00');
 
         $selectableWeaponsCount = $this->int8();
@@ -571,9 +576,9 @@ class normal extends base
 
     protected function mapObjectHuman(human $obj)
     {
-        $this->assertEquals('00 00 00 00', $obj->unknown0);
+        //$this->assertEquals('00 00 00 00', $obj->unknown0);
 
-        $obj->humanname = $this->text();;
+        $obj->humanname = $this->text();
         $inUnit = $this->int8();
         if ($inUnit == 0) {
             $this->nextEqualHex('ff ff ff ff ff ff ff ff');
@@ -591,8 +596,8 @@ class normal extends base
         $this->nextEqualHex('00 00 00 00 00 02 00 00 00 00 00 80 bf 00 00 80 bf 00 00 00 00');
         $obj->humanUnknown1 = $this->unknownblock(6);
         $this->nextEqualHex('00 00 00 00 00 00 00');
-        $obj->humanUnknown2 = $this->unknownblock(2);
-        $this->nextEqualHex('00 00 01 00 00 00 00 00 00 00 00 00 00 00');
+        $obj->humanUnknown2 = $this->unknownblock(4);
+        $this->nextEqualHex('01 00 00 00 00 00 00 00 00 00 00 00');
         // маркер принадлежности к команде должен быть до этого момента, дальше свою-чужой бинарно идинтичны
 
         // броник
@@ -602,7 +607,8 @@ class normal extends base
         // оружие в руках
         $obj->inventoryWeapon = $this->ammonitionParser([2, 34, 66], $obj);
 
-        $this->nextEqualHex('ff ff ff ff 03 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00');
+        $this->unknownblock(4);
+        $this->nextEqualHex('03 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00');
         $this->level = $this->int32();
         $this->experience = $this->int32(); // удвоенное число необходимых убийств для этого уровня. Возможно, убитый человек +2, животное +1
         $this->nextEqualHex('00 00 00 00');
