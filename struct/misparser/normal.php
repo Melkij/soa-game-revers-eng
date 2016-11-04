@@ -662,6 +662,55 @@ class normal extends base
         $this->nextEqualHex('ff ff ff ff 00 00 00 00 00 00 00 00');
     }
 
+    protected function scriptsAreaParser()
+    {
+        $this->regions();
+        $this->scriptsTimers();
+        $this->scripts();
+        $this->scriptsSwitchsAndPings();
+        $this->nextEqualHex('02 00 00 00 00 00 00 00');
+        $this->nextEqualHex('07 00 00 00');
+
+        $this->unknownBlock(4);
+    }
+
+    /**
+     * now just skip, no saving map
+     */
+    private function scriptsSwitchsAndPings()
+    {
+        $nextSwitch = $this->nextEqualHex('00 00 00 00', '07 00 00 00');
+        $switchCount = $this->int32();
+        if ($switchCount) {
+            $this->assertEquals($nextSwitch, '07 00 00 00');
+        } else {
+            $this->assertEquals($nextSwitch, '00 00 00 00');
+        }
+        for ($i = 0; $i < $switchCount; ++$i) {
+            $this->int32();
+            $this->text();
+        }
+
+        $pingNamesCount = $this->int32();
+        $this->assertEquals($pingNamesCount, $this->int32());
+        for ($i = 0; $i < $pingNamesCount; ++$i) {
+            $this->int32();
+            $this->text();
+        }
+        $nextBlock = $this->nextEqualHex('64 00 00 00', '81 00 00 00');
+        $switchStatusCount = $this->int32();
+        $this->assertEquals($switchCount, $switchStatusCount);
+        if ($switchStatusCount) {
+            $this->assertEquals($nextBlock, '81 00 00 00');
+        } else {
+            $this->assertEquals($nextBlock, '64 00 00 00');
+        }
+        for ($i = 0; $i < $switchStatusCount; ++$i) {
+            $this->int32();
+            $this->int8();
+        }
+    }
+
     protected function regions()
     {
         $count = $this->int32();
@@ -737,16 +786,6 @@ class normal extends base
 
     protected function endArea()
     {
-        $this->nextEqualHex('64 00 00 00');
-        $this->nextEqualHex('00 00 00 00 02 00 00 00 00 00 00 00');
-        $this->nextEqualHex('07 00 00 00');
-
-        if ($this->mis->getScriptsCount()) {
-            $this->nextEqualHex('01 00 00 00');
-        } else {
-            $this->nextEqualHex('00 00 00 00');
-        }
-
         $this->nextEqualHex('00 00 00 00 02 00 00 00 00 00 00 00');
         $this->mis->unknownBlockEnding = $this->unknownBlock(1);
         $this->nextEqualHex('00 00 00 00 00 00 00 01 00 00 00 00 00 00 00');
@@ -759,13 +798,5 @@ class normal extends base
             $this->mis->ambienteTags[] = $this->text();
         }
         $this->nextEqualHex('01 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00');
-    }
-
-    protected function scriptsAreaParser()
-    {
-        $this->regions();
-        $this->scriptsTimers();
-        $this->scripts();
-        $this->nextEqualHex('00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00');
     }
 }
