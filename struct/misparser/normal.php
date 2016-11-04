@@ -318,26 +318,24 @@ class normal extends base
                 case 223: //мина, см ammonitionParser, там обходной хак
                     $ammo = $obj->reinitAsAmmunition();
                     $ammo->ammonition = $baseAmmo;
+                    $this->unknownBlock(9);
                     $this->nextEqualHex('00 00 00 00 00');
                     return $ammo;
-            }
-
-            $this->nextEqualHex('00 00 00 00 00 00 00');
-            if ($this->nextEqualHex('00 00', 'ed 3e') == '00 00') {
-                // всякий полезный хлам на земле
-                $ammo = $obj->reinitAsAmmunition();
-                $ammo->ammonition = $baseAmmo;
-                return $ammo;
-            } else {
-                // а это ящик со снаряжением
-                $box = $obj->reinitAsAmmunitionBox();
-                $box->baseObject = $baseAmmo;
-                $inBoxCount = $this->int32();
-                for ($structCounter = 0; $structCounter < $inBoxCount; ++$structCounter) {
-                    $box->content[] = $this->ammonitionParser();
-                }
-                $this->nextEqualHex('00 00 00 00');
-                return $box;
+                case 229: // ящики
+                    $box = $obj->reinitAsAmmunitionBox();
+                    $box->baseObject = $baseAmmo;
+                    $this->unknownBlock(9);
+                    $inBoxCount = $this->int32();
+                    for ($structCounter = 0; $structCounter < $inBoxCount; ++$structCounter) {
+                        $box->content[] = $this->ammonitionParser();
+                    }
+                    $this->nextEqualHex('00 00 00 00');
+                    return $box;
+                default:
+                    $this->nextEqualHex('00 00 00 00 00 00 00 00 00');
+                    $ammo = $obj->reinitAsAmmunition();
+                    $ammo->ammonition = $baseAmmo;
+                    return $ammo;
             }
         }
         $this->nextEqualHex('ff ff ff ff');
@@ -431,20 +429,8 @@ class normal extends base
 
         switch ($ammoStructType) {
             case 1:
-                // всякая хрень вроде чумодана
                 $obj = new other;
-                if ($context and get_class($context) == mapobject::class
-                    and $ammoObjectId == 223
-                ) {
-                    // мины на карте встречаются в двух вариантах
-                    if ($this->file->hexahead(6) == '00 00 00 00 00 01') {
-                        $this->nextEqualHex('00 00 00 00 00 01 00 00 00 00 00 cd cd cd cd');
-                    } else {
-                        $this->nextEqualHex('00 ff ff ff ff 01 00 00 00 00 00 00 00 00 00');
-                    }
-                } else {
-                    $this->nextEqualHex('00 ff ff ff ff 01');
-                }
+                $this->nextEqualHex('00 ff ff ff ff 01', '00 00 00 00 00 01');
                 break;
             case 4:
                 $obj = new ammonition;
