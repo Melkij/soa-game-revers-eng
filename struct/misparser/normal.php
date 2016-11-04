@@ -368,7 +368,8 @@ class normal extends base
         $obj->unknownActive1 = $this->unknownblock(2);
         $this->nextEqualHex('ff 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00');
         $obj->unknownActive2 = $this->unknownblock(1);
-        $this->nextEqualHex('00 00 00 00 00 00 00 00 00');
+        $this->nextEqualHex('00 00 00 00 00 00 00 00');
+        $obj->unknownActive3 = $this->unknownblock(1);
 
         $nextStructType = $this->nextEqualHex(
             '01 00 00 00', //животные?
@@ -519,11 +520,12 @@ class normal extends base
                 $this->nextEqualHex(
                     '0d 00 00 00',
                     '04 00 00 00',
-                    '00 00 00 00'
+                    '00 00 00 00',
+                    'ff ff ff ff'
                 );
             }
         } else {
-            $this->nextEqualHex('ff ff ff ff');
+            $this->nextEqualHex('ff ff ff ff ff ff ff ff ff ff ff ff');
             $obj->text = $this->text();
             $this->nextEqualHex('ff ff ff ff');
         }
@@ -681,7 +683,11 @@ class normal extends base
 
     protected function afterRegionsBlock()
     {
+        //~ echo $this->hexaheaduntileof(),PHP_EOL;
         $this->nextEqualHex('02 00 00 00 00 00 00 00 00 00 00 00 24 00 00 00');
+        //~ $this->nextEqualHex('02 00 00 00');
+        //~ $blocksCount = $this->int32();
+        //~ $this->nextEqualHex('00 00 00 00 24 00 00 00');
     }
 
     protected function scripts()

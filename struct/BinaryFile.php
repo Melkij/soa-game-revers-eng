@@ -34,6 +34,9 @@ class BinaryFile
 
     public function readaheadbyte($len)
     {
+        if (($this->position + $len) > $this->getMaxPosition()) {
+            throw new \LogicException('unable read file after eof!');
+        }
         return mb_substr($this->file, $this->position, $len, 'binary');
     }
 
