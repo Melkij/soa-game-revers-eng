@@ -360,7 +360,7 @@ class normal extends base
 
         $ammoCount = $this->int32();
         for ($ammo = 0; $ammo < $ammoCount; ++$ammo) {
-            $obj->addAmmunitionItem($this->ammonitionParser());
+            $obj->addAmmunitionItem($this->ammonitionParser(null, $obj));
         }
 
         $this->nextEqualHex('00 00 00 00 00 00 00 00 00 00 00 00');
@@ -494,8 +494,12 @@ class normal extends base
 
         $this->nextEqualHex('00 00 00 00 00');
         if ($context) {
-            $this->assertEquals($context->mapuid, $this->int32()); // зачем-то повторяется аж сразу 2 раза
-            $this->assertEquals($context->mapuid, $this->int32());
+            if ($this->file->hexahead(8) == 'ff ff ff ff ff ff ff ff') {
+                $this->nextEqualHex('ff ff ff ff ff ff ff ff');
+            } else {
+                $this->assertEquals($context->mapuid, $this->int32()); // зачем-то повторяется аж сразу 2 раза
+                $this->assertEquals($context->mapuid, $this->int32());
+            }
             if ($context instanceof human) {
                 $this->nextEqualHex('01 00 00 00', '00 00 00 00');
             } else {
@@ -514,11 +518,12 @@ class normal extends base
             } else {
                 $this->nextEqualHex(
                     '0d 00 00 00',
+                    '04 00 00 00',
                     '00 00 00 00'
                 );
             }
         } else {
-            $this->nextEqualHex('ff ff ff ff ff ff ff ff ff ff ff ff');
+            $this->nextEqualHex('ff ff ff ff');
             $obj->text = $this->text();
             $this->nextEqualHex('ff ff ff ff');
         }
