@@ -53,10 +53,13 @@ class normal extends base
         $this->blockBeforeObjects();
 
         $this->objects();
-        throw new ParserError('not implement');
         $this->nextEqualHex('01 00 00 00');
-        $this->scriptsAreaParser();
-        $this->endArea();
+        try {
+            $this->scriptsAreaParser();
+            $this->endArea();
+        } catch (ParserError $e) {
+            throw new NotImplement('', 0, $e);
+        }
         if (! $this->file->isEof()) {
             throw new ParserError('not eof!');
         }
@@ -281,11 +284,11 @@ class normal extends base
 
                 $object = $this->concreteObjectParser($obj);
             } catch (\Exception $e) {
-                echo 'obj '.$i.' of '.$objectsCount,PHP_EOL;
+                //echo 'obj '.$i.' of '.$objectsCount,PHP_EOL;
                 //var_dump($this->file->getPosition(), $obj);
                 //echo 'prev obj: ';
                 //var_dump($obj->type);
-                echo $this->file->hexahead(200),PHP_EOL;
+                //echo $this->file->hexahead(200),PHP_EOL;
                 throw $e;
             }
             $this->mis->addObject($obj->mapuid, $object);
@@ -306,9 +309,9 @@ class normal extends base
             return $obj->reinitAsBuild();
         }
 
-        $type = $this->unknownBlock(4); // подозрительная штучка, может тут и можно определить, машинка дальше и чулавечек?
+        $obj->unknown3 = $this->unknownBlock(4);
 
-        if ($type == '00 00 00 00' and $this->file->hexahead(4) != 'ff ff ff ff') {
+        if ($obj->unknown3 == '00 00 00 00' and $this->file->hexahead(4) != 'ff ff ff ff') {
             // всякий хлам на земле
             $baseAmmo = $this->ammonitionParser(null, $obj);
 
@@ -350,7 +353,7 @@ class normal extends base
             }
         }
 
-        $this->unknownblock(4);
+        $obj->unknown4 = $this->unknownblock(4);
         // хуманы и мафынки
 
         return $this->mapObjectActive($obj->reinitAsActiveObject());
@@ -671,9 +674,10 @@ class normal extends base
     protected function objectHeaderBlock2(mapobject $obj)
     {
         $this->nextEqualHex('00 00 00 00', '01 00 00 00');
-        $obj->unknown2 = $this->unknownBlock(8);
+        $obj->unknown2 = $this->unknownBlock(4);
+        $this->nextEqualHex('00 00 80 3f');
         $this->nextEqualHex('00 00 00 00 00 00 ff ff ff ff ff ff ff ff ff ff ff ff');
-        $obj->baseObjectName = $this->text();
+        $this->assertEquals('unknown name', $this->text()); // always
         $this->nextEqualHex('ff ff ff ff 00 00 00 00 00 00 00 00');
     }
 

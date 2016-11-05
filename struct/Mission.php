@@ -23,7 +23,12 @@ class Mission
         return $mis;
     }
 
-    private function __construct() {}
+    public function initFromBinFile($filename)
+    {
+        misparser\base::load(BinaryFile::readFile($filename), $this);
+    }
+
+    public function __construct() {}
 
     public $title;
     public $description;
@@ -131,6 +136,11 @@ class Mission
             throw new \LogicException('duplicate object uid '.$uid);
         }
         $this->objects[ $uid ] = $obj;
+    }
+
+    public function getObjects()
+    {
+        return $this->objects;
     }
 
     public function __set($name, $value)

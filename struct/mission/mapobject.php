@@ -21,11 +21,12 @@ class mapobject
     public $currentHealth;
     public $maxArmor;
     public $currentArmor;
-    public $baseObjectName;
 
     public $unknown0; // для нормальной карты - только 00 00 00 00 или 00 00 00 80
     public $unknown1;
     public $unknown2;
+    public $unknown3;
+    public $unknown4;
 
     public function __set($name, $value)
     {
