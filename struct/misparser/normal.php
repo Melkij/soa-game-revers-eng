@@ -314,9 +314,13 @@ class normal extends base
 
         $obj->unknown3 = $this->unknownBlock(4);
 
-        if ((
+        if ($obj->type >= 2000 and $obj->type < 3000
+            and (
             $obj->unknown3 == '00 00 00 00' or $obj->unknown3 == '01 00 00 00'
-            ) and $this->file->hexahead(4) != 'ff ff ff ff') {
+            )
+                and $this->file->hexahead(4) != 'ff ff ff ff'
+                and $this->file->hexahead(4) != '00 00 00 00'
+            ) {
             // всякий хлам на земле
             $baseAmmo = $this->ammonitionParser(null, $obj);
 
