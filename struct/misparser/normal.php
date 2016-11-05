@@ -261,9 +261,11 @@ class normal extends base
     protected function objects()
     {
         $prevObj = null;
+        $prevStart = null;
         $objectsCount = $this->int32();
         for ($i = 0; $i < $objectsCount; ++$i) {
             try {
+                $startPos = $this->file->getPosition();
                 $obj = new mapobject;
                 $obj->type = $this->int32();
                 $obj->mapuid = $this->int32();
@@ -284,15 +286,16 @@ class normal extends base
 
                 $object = $this->concreteObjectParser($obj);
             } catch (\Exception $e) {
-                //echo 'obj '.$i.' of '.$objectsCount,PHP_EOL;
-                //var_dump($this->file->getPosition(), $obj);
-                //echo 'prev obj: ';
-                //var_dump($obj->type);
-                //echo $this->file->hexahead(200),PHP_EOL;
+                echo 'obj '.$i.' of '.$objectsCount,PHP_EOL;
+                $this->file->reset();
+                $this->file->skip($startPos);
+                var_dump($object->type);
+                echo $this->file->hexahead(300),PHP_EOL;
                 throw $e;
             }
             $this->mis->addObject($obj->mapuid, $object);
             $prevObj = $object;
+            $prevStart = $startPos;
         }
     }
 
@@ -311,7 +314,9 @@ class normal extends base
 
         $obj->unknown3 = $this->unknownBlock(4);
 
-        if ($obj->unknown3 == '00 00 00 00' and $this->file->hexahead(4) != 'ff ff ff ff') {
+        if ((
+            $obj->unknown3 == '00 00 00 00' or $obj->unknown3 == '01 00 00 00'
+            ) and $this->file->hexahead(4) != 'ff ff ff ff') {
             // всякий хлам на земле
             $baseAmmo = $this->ammonitionParser(null, $obj);
 
@@ -594,7 +599,7 @@ class normal extends base
         $obj->humanname = $this->text();
         $inUnit = $this->int8();
         if ($inUnit == 0) {
-            $this->nextEqualHex('ff ff ff ff ff ff ff ff');
+            $this->nextEqualHex('ff ff ff ff ff ff ff ff', 'ff ff ff ff f9 ff ff ff');
         } elseif ($inUnit == 1) {
             $obj->inUnitUid = $this->int32();
             $obj->inUnitPosition = $this->int32();
