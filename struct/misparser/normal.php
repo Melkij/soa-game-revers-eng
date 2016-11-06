@@ -288,19 +288,19 @@ class normal extends base
             } catch (\Exception $e) {
                 echo 'obj '.$i.' of '.$objectsCount,PHP_EOL;
                 $this->file->reset();
-                $this->file->skip($startPos);
-                var_dump($object->type);
+                $this->file->skip($prevStart);
+                var_dump($object);
                 echo $this->file->hexahead(3000),PHP_EOL;
                 throw $e;
             }
             $this->mis->addObject($obj->mapuid, $object);
-            //~ if ($object->type == 3003) {
+            if ($object->type == 9) {
                 //~ $len = $this->file->getPosition() - $startPos;
                 //~ $this->file->reset();
                 //~ $this->file->skip($startPos);
                 //~ echo $this->file->hexahead($len),PHP_EOL;
                 //~ die;
-            //~ }
+            }
             $prevObj = $object;
             $prevStart = $startPos;
         }
@@ -565,8 +565,8 @@ class normal extends base
     {
         // что-то не так со всеми 3 самолётами, после них ещё 5 байт нулей потеряшек
         // байк, 2c3, btr80 парсятся
-        $this->unknownblock(1);
-        $this->nextEqualHex('00 00 00 80 bf 00 00 80 bf 00 00 00 00 00 00 00 00 00 00 00');
+        $this->unknownblock(2);
+        $this->nextEqualHex('00 00 80 bf 00 00 80 bf 00 00 00 00 00 00 00 00 00 00 00');
         $this->nextEqualHex('00 00 00 00');
         $obj->unknownVehicle0 = $this->unknownblock(1);
         $this->nextEqualHex('00 00 80 bf 00 00 80 bf');
@@ -593,10 +593,12 @@ class normal extends base
         $this->nextEqualHex('00 00 00 00 00 00 80 3f 00 00 00 00 00');
         $this->nextEqualHex('00');
         if (in_array($obj->type, [2, 10, 22])) {
+            // самолётики
             $this->nextEqualHex('00 00 00 00 00');
         }
 
-        if ($obj->unknown0 === '00 00 00 00') {
+        if (in_array($obj->type, [8, 9, 11, 12])) {
+            // вертушки
             $this->nextEqualHex('00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 f0 55 00 00 0a d7 23 3c 40 08 f4 34 00 00 00 00 01 00');
             $obj->unknownVehicle6 = $this->unknownblock(13);
             $this->nextEqualHex('00 00 80 3f f0 55 00 00 0a d7 23 3c 40 08 f4 34 00 00 00 00 00 00 00 00 00 00 40 42 0f 00 00 00 00 00 00 00 00 80 40 00 00 00 00');
