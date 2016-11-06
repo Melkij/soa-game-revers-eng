@@ -274,7 +274,7 @@ class normal extends base
                 $obj->unknown0 = $this->unknownBlock(4);
                 $obj->rotate = $this->float();
                 $obj->scale = $this->float(); // размер камней, деревьев. 1 для всех остальных
-                $this->objectHeaderConst();
+                $this->objectHeaderBlock1($obj);
                 $obj->unknown1 = $this->unknownBlock(1);
                 $this->nextEqualHex('00 00 00 01');
                 $obj->maxHealth = $this->int32();
@@ -288,19 +288,20 @@ class normal extends base
             } catch (\Exception $e) {
                 echo 'obj '.$i.' of '.$objectsCount,PHP_EOL;
                 $this->file->reset();
-                $this->file->skip($prevStart);
-                var_dump($object);
+                $this->file->skip($startPos);
+                //var_dump($object);
                 echo $this->file->hexahead(3000),PHP_EOL;
                 throw $e;
             }
             $this->mis->addObject($obj->mapuid, $object);
-            if ($object->type == 9) {
+            //~ if ($object->type == 0) {
                 //~ $len = $this->file->getPosition() - $startPos;
                 //~ $this->file->reset();
                 //~ $this->file->skip($startPos);
                 //~ echo $this->file->hexahead($len),PHP_EOL;
+                //~ var_dump($object);
                 //~ die;
-            }
+            //~ }
             $prevObj = $object;
             $prevStart = $startPos;
         }
@@ -643,10 +644,12 @@ class normal extends base
         $this->nextEqualHex('00 00 00 00');
         $obj->humanUnknown3 = $this->unknownblock(4+1);
         $this->nextEqualHex('00 00 00 00 00 00 00 00 00 00 00 01 0b 00 00 00');
+            //'00 00 00 00 00 00 00 fb ff ff ff 01 0b 00 00 00'
         $obj->humanUnknown4 = $this->unknownblock(1+4);
         $this->nextEqualHex('00 00 00 00 00 00 00');
         $obj->humanUnknown5 = $this->unknownblock(8); // реакция на ПНВ, бинокль
         $this->nextEqualHex('00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00');
+            //'00 00 00 00 01 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00'
         // навыки
         $obj->skill1 = $this->int32();
         $obj->skill2 = $this->int32();
@@ -687,10 +690,15 @@ class normal extends base
 
     protected function objectLandscapeMapVersionSpecific() {}
 
-    protected function objectHeaderConst()
+    protected function objectHeaderBlock1(mapobject $obj)
     {
         $this->nextEqualHex('01', '00');
-        $this->nextEqualHex('01 00 00 00 00 16 00 00 00 00 00 00 00');
+        $this->nextEqualHex('01 00 00 00 00 16 00 00 00');
+        $structsCount = $this->int32();
+        for ($i = 0; $i < $structsCount; ++$i) {
+            // непонятная штука, попалась только в обеих миссиях 6
+            $this->nextEqualHex('11 00 00 00 00 00 00 00 00 00 00 00 00 00 79 00 00 00 00 00 00 00 bc 02 00 00 bc 02 00 00 00 00 00 00 01 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 80 3f 00 00 00 00');
+        }
     }
 
     protected function objectHeaderBlock2(mapobject $obj)

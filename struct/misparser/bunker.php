@@ -162,7 +162,7 @@ class bunker extends normal
 
     protected function endArea() {}
 
-    protected function objectHeaderConst()
+    protected function objectHeaderBlock1(mapobject $obj)
     {
         $this->nextEqualHex('01 01 00 00 00 00 10 00 00 00 00 00 00 00');
     }

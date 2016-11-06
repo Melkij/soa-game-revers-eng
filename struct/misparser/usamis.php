@@ -37,7 +37,7 @@ class usamis extends normal
         $this->nextEqualHex('64 00 00 00 00 00 00 00 01 00 00 00 00 00 00 00 01 00 00 00 00 00 00 00 01 00 00 00 00 00 00 00');
     }
 
-    protected function objectHeaderConst()
+    protected function objectHeaderBlock1(mapobject $obj)
     {
         $this->nextEqualHex('01 01 00 00 00 00 08 00 00 00 00 00 00 00');
     }
