@@ -7,6 +7,7 @@ class human extends activeobject
     public $inventoryArmor = null;
     public $inventoryBinokle = null;
     public $inventoryWeapon = null;
+    public $inventoryGranate = null;
     public $ammunitionSlots = [];
 
     public $humanname;

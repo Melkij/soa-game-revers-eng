@@ -290,10 +290,17 @@ class normal extends base
                 $this->file->reset();
                 $this->file->skip($startPos);
                 var_dump($object->type);
-                echo $this->file->hexahead(300),PHP_EOL;
+                echo $this->file->hexahead(3000),PHP_EOL;
                 throw $e;
             }
             $this->mis->addObject($obj->mapuid, $object);
+            //~ if ($object->type == 3003) {
+                //~ $len = $this->file->getPosition() - $startPos;
+                //~ $this->file->reset();
+                //~ $this->file->skip($startPos);
+                //~ echo $this->file->hexahead($len),PHP_EOL;
+                //~ die;
+            //~ }
             $prevObj = $object;
             $prevStart = $startPos;
         }
@@ -315,11 +322,11 @@ class normal extends base
         $obj->unknown3 = $this->unknownBlock(4);
 
         if ($obj->type >= 2000 and $obj->type < 3000
-            and (
-            $obj->unknown3 == '00 00 00 00' or $obj->unknown3 == '01 00 00 00'
-            )
-                and $this->file->hexahead(4) != 'ff ff ff ff'
-                and $this->file->hexahead(4) != '00 00 00 00'
+            //~ and (
+            //~ $obj->unknown3 == '00 00 00 00' or $obj->unknown3 == '01 00 00 00'
+            //~ )
+                //~ and $this->file->hexahead(4) != 'ff ff ff ff'
+                //~ and $this->file->hexahead(4) != '00 00 00 00'
             ) {
             // всякий хлам на земле
             $baseAmmo = $this->ammonitionParser(null, $obj);
@@ -642,7 +649,10 @@ class normal extends base
         $obj->skill1 = $this->int32();
         $obj->skill2 = $this->int32();
         $obj->humanUnknown6 = $this->unknownblock(2);
-        $this->nextEqualHex('00 00 00 00 00 00 00 00 00 00 00 00');
+        $this->nextEqualHex('00 00 00 00 00 00 00 00');
+
+        // слот для гранаты
+        $obj->inventoryGranate = $this->ammonitionParser([34], $obj);
 
         $gender = $this->int8();
         switch ($gender) {
@@ -653,21 +663,21 @@ class normal extends base
                 $obj->gender = 'female';
                 break;
             default:
-                throw new LogicException('gender ' . $gender . ' unknown');
+                throw new ParserError('gender ' . $gender . ' unknown');
         }
 
         $this->nextEqualHex('00 00 00');
-        $obj->humanUnknown7 = $this->unknownblock(2);
-        $this->nextEqualHex('0b 00 00');
+        $obj->humanUnknown7 = $this->unknownblock(1);
+        $this->assertEquals($obj->type, $this->int32());
         $marker = $this->int8();
         if ($marker == 1) {
             if (! $obj->isKnight()) {
-                throw new \LogicException('strange marker not knight '.$marker);
+                throw new ParserError('strange marker not knight '.$marker);
             }
             // рыцарь
             $this->nextEqualHex('00 00 80 3e 00 00 00 00 00 ff ff ff ff 00 00');
         } elseif ($marker != 0) {
-            throw new LogicException('strange marker '.$marker);
+            throw new ParserError('strange marker '.$marker);
         }
         $this->nextEqualHex('00 00 00');
     }
