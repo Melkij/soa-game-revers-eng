@@ -142,6 +142,10 @@ class Mission
     {
         return $this->objects;
     }
+    public function getRegions()
+    {
+        return $this->regions;
+    }
 
     public function __set($name, $value)
     {

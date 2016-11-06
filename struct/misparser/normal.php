@@ -54,12 +54,8 @@ class normal extends base
 
         $this->objects();
         $this->nextEqualHex('01 00 00 00');
-        try {
-            $this->scriptsAreaParser();
-            $this->endArea();
-        } catch (ParserError $e) {
-            throw new NotImplement('', 0, $e);
-        }
+        $this->scriptsAreaParser();
+        $this->endArea();
         if (! $this->file->isEof()) {
             throw new ParserError('not eof!');
         }
@@ -287,10 +283,11 @@ class normal extends base
                 $object = $this->concreteObjectParser($obj);
             } catch (\Exception $e) {
                 echo 'obj '.$i.' of '.$objectsCount,PHP_EOL;
+                echo $this->file->hexahead(20),PHP_EOL;
                 $this->file->reset();
                 $this->file->skip($startPos);
                 //var_dump($object);
-                echo $this->file->hexahead(3000),PHP_EOL;
+                echo $this->file->hexahead(300),PHP_EOL;
                 throw $e;
             }
             $this->mis->addObject($obj->mapuid, $object);
@@ -392,7 +389,13 @@ class normal extends base
             $obj->addAmmunitionItem($this->ammonitionParser(null, $obj));
         }
 
-        $this->nextEqualHex('00 00 00 00 00 00 00 00 00 00 00 00');
+        $this->nextEqualHex('00 00 00 00 00 00 00 00');
+        $marker = $this->int32();
+        if ($marker == 1) {
+            $this->nextEqualHex('01 00 00 00 00 00 00 00 00 10 00 00 00 03 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00');
+        } else {
+            $this->assertEquals(0, $marker);
+        }
 
         $obj->unknownActive1 = $this->unknownblock(2);
         $this->nextEqualHex('ff 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00');
@@ -643,13 +646,17 @@ class normal extends base
         $obj->experience = $this->int32(); // удвоенное число необходимых убийств для этого уровня. Возможно, убитый человек +2, животное +1
         $this->nextEqualHex('00 00 00 00');
         $obj->humanUnknown3 = $this->unknownblock(4+1);
-        $this->nextEqualHex('00 00 00 00 00 00 00 00 00 00 00 01 0b 00 00 00');
-            //'00 00 00 00 00 00 00 fb ff ff ff 01 0b 00 00 00'
+        $this->nextEqualHex(
+            '00 00 00 00 00 00 00 00 00 00 00 01 0b 00 00 00',
+            '00 00 00 00 00 00 00 fb ff ff ff 01 0b 00 00 00'
+        );
         $obj->humanUnknown4 = $this->unknownblock(1+4);
         $this->nextEqualHex('00 00 00 00 00 00 00');
         $obj->humanUnknown5 = $this->unknownblock(8); // реакция на ПНВ, бинокль
-        $this->nextEqualHex('00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00');
-            //'00 00 00 00 01 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00'
+        $this->nextEqualHex(
+            '00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00',
+            '00 00 00 00 01 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00'
+        );
         // навыки
         $obj->skill1 = $this->int32();
         $obj->skill2 = $this->int32();
@@ -715,7 +722,11 @@ class normal extends base
     {
         $this->regions();
         $this->scriptsTimers();
-        $this->scripts();
+        try {
+            $this->scripts();
+        } catch (ParserError $e) {
+            throw new NotImplement('', 0, $e);
+        }
         $this->scriptsSwitchsAndPings();
         $this->nextEqualHex('02 00 00 00 00 00 00 00');
         $this->nextEqualHex('07 00 00 00');
@@ -782,13 +793,12 @@ class normal extends base
         $timersCount = $this->int32();
         for ($i = 0; $i < $timersCount; ++$i) {
             $timer = $this->mis->addScriptTimer();
-            $timer->id = $i;
-            $this->assertEquals($i, $this->int32());
+            $timer->id = $this->int32();
             $timer->unknown = $this->unknownBlock(10);
             $timer->name = $this->text();
             $this->nextEqualHex('00 00 00 00');
         }
-        $this->assertEquals($timersCount, $this->int32());
+        $nextTimerId = $this->int32(); // id следующего таймера
         $this->nextEqualHex('24 00 00 00');
     }
 
