@@ -677,7 +677,8 @@ class normal extends base
                 throw new ParserError('strange marker not knight '.$marker);
             }
             // рыцарь
-            $this->nextEqualHex('00 00 80 3e 00 00 00 00 00 ff ff ff ff 00 00');
+            $this->unknownblock(4);
+            $this->nextEqualHex('00 00 00 00 00 ff ff ff ff 00 00');
         } elseif ($marker != 0) {
             throw new ParserError('strange marker '.$marker);
         }
@@ -695,8 +696,8 @@ class normal extends base
     protected function objectHeaderBlock2(mapobject $obj)
     {
         $this->nextEqualHex('00 00 00 00', '01 00 00 00');
-        $obj->unknown2 = $this->unknownBlock(4);
-        $this->nextEqualHex('00 00 80 3f');
+        $obj->unknown2 = $this->unknownBlock(8);
+        //~ $this->nextEqualHex('00 00 80 3f');
         $this->nextEqualHex('00 00 00 00 00 00 ff ff ff ff ff ff ff ff ff ff ff ff');
         $this->assertEquals('unknown name', $this->text()); // always
         $this->nextEqualHex('ff ff ff ff 00 00 00 00 00 00 00 00');
