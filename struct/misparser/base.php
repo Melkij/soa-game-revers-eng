@@ -19,6 +19,10 @@ abstract class base
                 // игровой редактор оставляет такую метку
                 $parser = new normal($file, $mis);
                 break;
+            case normal7::versionMarker():
+                // оригинальные миссии 5a,5b,9a
+                $parser = new normal7($file, $mis);
+                break;
             case bunker::versionMarker():
                 $parser = new bunker($file, $mis);
                 break;
