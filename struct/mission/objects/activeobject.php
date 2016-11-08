@@ -13,6 +13,8 @@ class activeobject extends mapobject
     public $unknownActive2;
     public $unknownActive3;
 
+    public $ai;
+
     public $weapons = [];
 
     protected $ammunitions = [];

@@ -296,7 +296,7 @@ class normal extends base
                 //~ $this->file->reset();
                 //~ $this->file->skip($startPos);
                 //~ echo $this->file->hexahead($len),PHP_EOL;
-                //~ var_dump($object);
+                //~ $this->file->skip($len);
                 //~ die;
             //~ }
             $prevObj = $object;
@@ -373,6 +373,25 @@ class normal extends base
         return $this->mapObjectActive($obj->reinitAsActiveObject());
     }
 
+    protected function mapObjectActiveAiSetup($aiBitmap)
+    {
+        $aiFlags = [
+            'flee',
+            'chase',
+            'equip',
+            'attack',
+            'saveammo',
+            'join',
+            'get_id',
+            'get_out',
+        ];
+        $ai = [];
+        foreach ($aiFlags as $bitOffset => $flag) {
+            $ai[ $flag ] = ($aiBitmap & 1 << $bitOffset) != 0;
+        }
+        return $ai;
+    }
+
     protected function mapObjectActive(activeobject $obj)
     {
         $this->nextEqualHex('00 00 00 00 00 00 00 00 00');
@@ -397,7 +416,9 @@ class normal extends base
             $this->assertEquals(0, $marker);
         }
 
-        $obj->unknownActive1 = $this->unknownblock(2);
+        $obj->ai = $this->mapObjectActiveAiSetup($this->int8());
+
+        $obj->unknownActive1 = $this->unknownblock(1);
         $this->nextEqualHex('ff 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00');
         $obj->unknownActive2 = $this->unknownblock(1);
         $this->nextEqualHex('00 00 00 00');
