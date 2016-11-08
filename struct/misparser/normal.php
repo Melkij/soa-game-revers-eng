@@ -418,7 +418,7 @@ class normal extends base
 
         $obj->ai = $this->mapObjectActiveAiSetup($this->int8());
 
-        $obj->unknownActive1 = $this->unknownblock(1);
+        $obj->unknownActive1 = $this->nextEqualHex('00', '01');
         $this->nextEqualHex('ff 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00');
         $obj->unknownActive2 = $this->unknownblock(1);
         $this->nextEqualHex('00 00 00 00');

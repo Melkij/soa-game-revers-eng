@@ -51,25 +51,37 @@ class mapobject
 
     public function reinitAsAmmunition()
     {
+        if (abs($this->scale - 1) > 0.0001) {
+            throw new \LogicException('can not scale');
+        }
         return $this->reinit(new ammunition);
     }
     public function reinitAsAmmunitionBox()
     {
+        if (abs($this->scale - 1) > 0.0001) {
+            throw new \LogicException('can not scale');
+        }
         return $this->reinit(new ammunitionBox);
     }
     public function reinitAsZnrMine()
     {
+        if (abs($this->scale - 1) > 0.0001) {
+            throw new \LogicException('can not scale');
+        }
         return $this->reinit(new znrMine);
     }
     public function reinitAsActiveObject()
     {
+        if (abs($this->scale - 1) > 0.0001) {
+            throw new \LogicException('can not scale');
+        }
         return $this->reinit(new activeobject);
     }
 
     public function reinitAsBuild()
     {
         if (abs($this->scale - 1) > 0.0001) {
-            throw new \LogicException('can not scale building');
+            throw new \LogicException('can not scale');
         }
         return $this->reinit(new build);
     }
