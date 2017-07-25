@@ -50,7 +50,7 @@ class BinaryFile
         return $this->binhex($this->readbyte($len));
     }
 
-    private function readbyte($len)
+    public function readbyte($len)
     {
         $bytes = $this->readaheadbyte($len);
         $this->position += $len;

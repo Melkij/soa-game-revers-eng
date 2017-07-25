@@ -70,6 +70,7 @@ class Mission
     protected $regions = [];
     protected $scripts = [];
     protected $scriptTimers = [];
+    public $nextTimerId = null;
     protected $parties = [];
 
     public function addParty($id)

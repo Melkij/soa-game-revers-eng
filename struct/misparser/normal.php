@@ -102,7 +102,14 @@ class normal extends base
             $seekerInventoryCount = $this->int32();
             $party->color = $this->int32();
             for ($i = 0; $i < $seekerInventoryCount; ++$i) {
-                $party->seekerInventory[] = $this->unknownBlock(5*4);
+                $invId = $this->int32();
+                $this->assertEquals($invId, $this->int32());
+                $party->seekerInventory[ $i ] = [
+                    'object' => $invId,
+                    'min' => $this->int32(),
+                    'max' => $this->int32(),
+                ];
+                $this->assertEquals($party->seekerInventory[ $i ]['min'], $this->int32()); // ??? но тесты проходит
             }
         }
         $this->nextEqualHex('00');
@@ -132,10 +139,14 @@ class normal extends base
             $seekerInventoryCount = $this->int32(); // again?
             $this->assertEquals(count($party->seekerInventory), $seekerInventoryCount);
             for ($i = 0; $i < $seekerInventoryCount; ++$i) {
-                $this->assertEquals($party->seekerInventory[ $i ], $this->file->hexread(5*4));
+                $this->assertEquals($party->seekerInventory[ $i ]['object'], $this->int32());
+                $this->assertEquals($party->seekerInventory[ $i ]['object'], $this->int32());
+                $this->assertEquals($party->seekerInventory[ $i ]['min'], $this->int32());
+                $this->assertEquals($party->seekerInventory[ $i ]['max'], $this->int32());
+                $this->assertEquals($party->seekerInventory[ $i ]['min'], $this->int32());
             }
             $this->nextEqualHex('01 01');
-            $party->unknownParser3Block = $this->unknownBlock(8); // отзывается на вооружённых рыцарей? diff female_enemy_knight_skin.mis female_enemy_knight_empty.mis
+            $party->unknownParser3Block = $this->unknownBlock(8); // diff female_enemy_knight_skin.mis female_enemy_knight_empty.mis не рыцари, т.к. меняются в ориг.кампании
         }
     }
 
@@ -231,7 +242,8 @@ class normal extends base
         $this->mis->editorCamViewDirectionY = $this->float();
         $this->mis->editorCamViewDirectionZ = $this->float(); // но это точно z
 
-        $this->mis->unknownCamSeparator = $this->unknownBlock(8);
+        //$this->mis->unknownCamSeparator = $this->unknownBlock(8);
+        $this->nextEqualHex('4e 61 3c 4b 00 00 a0 41');
 
         $this->nextEqualHex($camBlock);
 
@@ -241,12 +253,23 @@ class normal extends base
         $this->nextEqualHex('05 00 00 00');
 
         $this->mis->skyId = $this->int32();
-        $this->mis->unknownBlockAfterSky = $this->unknownBlock(4);
+        $this->nextEqualHex('00 00 00 00');
+        //$this->mis->unknownBlockAfterSky = $this->unknownBlock(4);
         $this->mis->rainPercent = $this->float();
         $this->mis->temperature = $this->float();
         $this->mis->unknownBlockAfterTemperature = $this->unknownBlock(1);
         $this->nextEqualHex('00 00 00 00 0c 00 00 00');
-        $this->mis->gametime = $this->unknownBlock(4); // скорей всего здесь игровое время +- возможное смещение на 1 байт
+        $this->mapGameTime();
+    }
+
+    protected function mapGameTime()
+    {
+        $time = $this->int32();
+        $hour = floor($time / 1000 / 60);
+        $this->mis->gametime = [
+            'hour' => $hour,
+            'min' => floor($time / 1000 - $hour*60)
+        ];
     }
 
     protected function blockBeforeObjects()
@@ -819,7 +842,7 @@ class normal extends base
             $timer->name = $this->text();
             $this->nextEqualHex('00 00 00 00');
         }
-        $nextTimerId = $this->int32(); // id следующего таймера
+        $this->mis->nextTimerId = $this->int32(); // id следующего таймера
         $this->nextEqualHex('24 00 00 00');
     }
 

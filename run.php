@@ -1,18 +1,10 @@
 <?php
 
 use struct\Mission;
+use struct\Trs;
 use struct\misparser\ParserError;
 
-spl_autoload_register(function($class) {
-    $file = str_replace('\\', DIRECTORY_SEPARATOR, $class).'.php';
-    if (file_exists($file)) {
-        include $file;
-    }
-});
-
-set_error_handler(function ($errno, $errstr) {
-    throw new \LogicException($errstr, $errno);
-});
+include 'struct/bootstrap.php';
 
 $count = 0;
 $failed = [];
@@ -29,6 +21,15 @@ foreach (glob('testmis/*.mis') as $file) {
             $failed[] = basename($file);
             echo basename($file) . ' ParserError: ' . $e,PHP_EOL;
         }
+    }
+}
+foreach (glob('trs/*.trs') as $file) {
+    ++$count;
+    try {
+        Trs::readFromFile($file);
+    } catch (ParserError $e) {
+        $failed[] = basename($file);
+        echo basename($file) . ' ParserError: ' . $e,PHP_EOL;
     }
 }
 echo $count . ' total, '. ($count - count($failed) - count($notimplement)) .' success, ', count($notimplement), ' not implement, ', count($failed) . ' failed.',PHP_EOL;
