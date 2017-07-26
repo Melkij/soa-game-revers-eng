@@ -766,12 +766,9 @@ class normal extends base
     {
         $this->regions();
         $this->scriptsTimers();
-        try {
-            $this->scripts();
-        } catch (\Exception $e) {
-            throw new NotImplement('', 0, $e);
-        }
-
+        $this->scripts();
+        $this->nextEqualHex('02 00 00 00 00 00 00 00');
+        $this->nextEqualHex('07 00 00 00');
         $this->unknownBlock(4);
     }
 
@@ -845,20 +842,11 @@ class normal extends base
 
     protected function scripts()
     {
-        $scriptsLen = strrpos($this->hexaheaduntileof(), '02 00 00 00 00 00 00 00 07 00 00 00')/3;
-        $this->mis->binaryScripts = $this->file->hexread($scriptsLen);
-
-        // here is also, but unable find start backward
-        // $this->scriptsSwitchsAndPings();
-        $this->nextEqualHex('02 00 00 00 00 00 00 00');
-        $this->nextEqualHex('07 00 00 00');
-        return;
-
-        //~ throw new NotImplement();
         $scriptsCount = $this->int32();
 
         if (! $scriptsCount) {
             $this->nextEqualHex('00 00 00 00 01 00 00 00 00 00 00 00 00 00 00 00');
+            $this->scriptsSwitchsAndPings();
             return;
         }
 
@@ -867,6 +855,11 @@ class normal extends base
             $this->int32();
             $this->assertEquals($i + 1, $this->int32());
         }
+        $scriptsLen = strrpos($this->hexaheaduntileof(), '02 00 00 00 00 00 00 00 07 00 00 00')/3;
+        $this->mis->binaryScripts = $this->file->hexread($scriptsLen);
+        // here is also, but unable find start backward
+        // $this->scriptsSwitchsAndPings();
+        return;
         for ($i = 0; $i < $scriptsCount; ++$i) {
             $this->nextEqualHex('00');
         }
@@ -876,6 +869,7 @@ class normal extends base
         }
 
         $this->nextEqualHex('00 00 00 00 01 00 00 00 01 00 00 00 01 00 00 00');
+
         //~ $this->unknownBlock(24 + 36 * ($scriptsCount-1));
         $this->unknownBlock(56);
         $nameBlockCount = $this->int32();
