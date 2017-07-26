@@ -3,6 +3,7 @@
 use struct\Mission;
 use struct\Trs;
 use struct\misparser\ParserError;
+use struct\misparser\NotImplement;
 
 include 'struct/bootstrap.php';
 
@@ -13,6 +14,9 @@ foreach (glob('testmis/*.mis') as $file) {
     ++$count;
     try {
         Mission::readFromFile($file);
+    } catch (NotImplement $e) {
+        $notimplement[] = basename($file);
+        continue;
     } catch (ParserError $e) {
         if ($e->getMessage() == 'not implement') {
             $notimplement[] = basename($file);
@@ -35,6 +39,9 @@ foreach (glob('trs/*.trs') as $file) {
 echo $count . ' total, '. ($count - count($failed) - count($notimplement)) .' success, ', count($notimplement), ' not implement, ', count($failed) . ' failed.',PHP_EOL;
 if ($failed) {
     echo 'failed files:',PHP_EOL;
-    echo join(PHP_EOL, $failed);
+    echo join(PHP_EOL, $failed),PHP_EOL;
 }
-echo PHP_EOL;
+if ($notimplement) {
+    echo 'not implemented files:',PHP_EOL;
+    echo join(PHP_EOL, $notimplement),PHP_EOL;
+}

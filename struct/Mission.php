@@ -57,6 +57,8 @@ class Mission
     public $unknownBlockAfterTemperature;
     public $unknownBlockEnding;
 
+    public $binaryScripts;
+
     public $minimapsize; // или только редактора или ещё дефолтный на карте
 
     public $heightsMap1 = [];

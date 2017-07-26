@@ -768,12 +768,9 @@ class normal extends base
         $this->scriptsTimers();
         try {
             $this->scripts();
-        } catch (ParserError $e) {
+        } catch (\Exception $e) {
             throw new NotImplement('', 0, $e);
         }
-        $this->scriptsSwitchsAndPings();
-        $this->nextEqualHex('02 00 00 00 00 00 00 00');
-        $this->nextEqualHex('07 00 00 00');
 
         $this->unknownBlock(4);
     }
@@ -848,6 +845,16 @@ class normal extends base
 
     protected function scripts()
     {
+        $scriptsLen = strrpos($this->hexaheaduntileof(), '02 00 00 00 00 00 00 00 07 00 00 00')/3;
+        $this->mis->binaryScripts = $this->file->hexread($scriptsLen);
+
+        // here is also, but unable find start backward
+        // $this->scriptsSwitchsAndPings();
+        $this->nextEqualHex('02 00 00 00 00 00 00 00');
+        $this->nextEqualHex('07 00 00 00');
+        return;
+
+        //~ throw new NotImplement();
         $scriptsCount = $this->int32();
 
         if (! $scriptsCount) {
@@ -855,35 +862,32 @@ class normal extends base
             return;
         }
 
-        // базовый парсер, умеет разбирать пустые скрипты и не ломается с триггером mission_start
-
         for ($i = 0; $i < $scriptsCount; ++$i) {
-            $script = $this->mis->addScript();
-            for ($i = 0; $i < $scriptsCount; ++$i) {
-                $script->unknown1[] = $this->unknownBlock(4);
-                $this->assertEquals($i + 1, $this->int32());
-            }
-            for ($i = 0; $i < $scriptsCount; ++$i) {
-                $this->nextEqualHex('00');
-            }
-            $blockCount = $this->int32();
-            $this->assertEquals($scriptsCount*2, $blockCount);
-            for ($i = 0; $i < $blockCount; ++$i) {
-                $script->unknown2[] = $this->unknownBlock(9);
-            }
-            $this->nextEqualHex('00 00 00 00 01 00 00 00 01 00 00 00 01 00 00 00');
-            $script->unknownBody = $this->unknownBlock(24 + 36 * ($scriptsCount-1));
-            $nameBlockCount = $this->int32();
-            for ($i = 0; $i < $nameBlockCount; ++$i) {
-                $this->nextEqualHex('01 00 00 00');
-                $script->unknown3[] = $this->unknownBlock(4);
-                $this->nextEqualHex('01 00 00 00 d0 07 00 00 01 00 00 00 00 00 00 00');
-                $script->names[] = $this->text();
-            }
-            $unknownBlockLen = $this->int32();
-            for ($i = 0; $i < $unknownBlockLen; ++$i) {
-                $script->unknown4[] = $this->unknownBlock(20);
-            }
+            // id выполняемых действий?
+            $this->int32();
+            $this->assertEquals($i + 1, $this->int32());
+        }
+        for ($i = 0; $i < $scriptsCount; ++$i) {
+            $this->nextEqualHex('00');
+        }
+        $blockCount = $this->int32();
+        for ($i = 0; $i < $blockCount; ++$i) {
+            $this->unknownBlock(9); // триггеры
+        }
+
+        $this->nextEqualHex('00 00 00 00 01 00 00 00 01 00 00 00 01 00 00 00');
+        //~ $this->unknownBlock(24 + 36 * ($scriptsCount-1));
+        $this->unknownBlock(56);
+        $nameBlockCount = $this->int32();
+        for ($i = 0; $i < $nameBlockCount; ++$i) {
+            $this->nextEqualHex('01 00 00 00');
+            $this->unknownBlock(4);
+            $this->nextEqualHex('01 00 00 00 d0 07 00 00 01 00 00 00 00 00 00 00');
+            $this->text();
+        }
+        $unknownBlockLen = $this->int32();
+        for ($i = 0; $i < $unknownBlockLen; ++$i) {
+            $this->unknownBlock(20);
         }
     }
 

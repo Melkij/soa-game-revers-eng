@@ -59,7 +59,7 @@ class usamis extends normal
             return $obj->reinitAsBuild();
         }
 
-        throw new ParserError('not implement');
+        throw new NotImplement();
     }
 
     protected function mapEnvironment()
