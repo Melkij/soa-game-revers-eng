@@ -1067,7 +1067,7 @@ class normal extends base
                     case 1006: // party statistic
                         $partyId = $this->int32();
                         $partyPolicy = $this->int32(); // 0 - units count, 1 - percent, 2 - alive only knights
-                        $partyValue = $this->float(); // TODO: recheck is float with units count
+                        $partyValue = $this->float(); // also float with units count
                         break;
                     case 1010: // unitownedby
                         // объект и группа
@@ -1079,7 +1079,10 @@ class normal extends base
                         break;
                     case 1030: // obj used
                         $objId = $this->int32();
-                        $this->nextEqualHex('ff ff ff ff 00 00');
+                        $actorId = $this->int32();
+                        $isUsedOnlyByActor = $this->int8();
+                        $this->assertEquals(true, $isUsedOnlyByActor == 0 or $isUsedOnlyByActor == 1);
+                        $this->nextEqualHex('00');
                         break;
                     case 1002: // region entered
                         //echo $this->file->hexahead(min(500, $this->file->getMaxPosition() - $this->file->getPosition()));
