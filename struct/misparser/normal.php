@@ -774,16 +774,12 @@ class normal extends base
 
     /**
      * now just skip, no saving map
+     * empty area is 24 byte = 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 64 00 00 00 00 00 00 00
      */
     private function scriptsSwitchsAndPings()
     {
         $nextSwitch = $this->nextEqualHex('00 00 00 00', '07 00 00 00');
         $switchCount = $this->int32();
-        if ($switchCount) {
-            $this->assertEquals($nextSwitch, '07 00 00 00');
-        } else {
-            $this->assertEquals($nextSwitch, '00 00 00 00');
-        }
         for ($i = 0; $i < $switchCount; ++$i) {
             $this->int32();
             $this->text();
@@ -795,14 +791,9 @@ class normal extends base
             $this->int32();
             $this->text();
         }
-        $nextBlock = $this->nextEqualHex('64 00 00 00', '81 00 00 00');
+        $nextBlock = $this->nextEqualHex('64 00 00 00', '65 00 00 00', '81 00 00 00');
         $switchStatusCount = $this->int32();
         $this->assertEquals($switchCount, $switchStatusCount);
-        if ($switchStatusCount) {
-            $this->assertEquals($nextBlock, '81 00 00 00');
-        } else {
-            $this->assertEquals($nextBlock, '64 00 00 00');
-        }
         for ($i = 0; $i < $switchStatusCount; ++$i) {
             $this->int32();
             $this->int8();
@@ -842,47 +833,317 @@ class normal extends base
 
     protected function scripts()
     {
-        $scriptsCount = $this->int32();
+        $actionsCount = $this->int32();
 
-        if (! $scriptsCount) {
-            $this->nextEqualHex('00 00 00 00 01 00 00 00 00 00 00 00 00 00 00 00');
-            $this->scriptsSwitchsAndPings();
-            return;
-        }
+        //~ if (! $actionsCount) {
+            //~ $this->nextEqualHex('00 00 00 00 01 00 00 00 00 00 00 00 00 00 00 00');
+            //~ $this->scriptsSwitchsAndPings();
+            //~ return;
+        //~ }
 
-        for ($i = 0; $i < $scriptsCount; ++$i) {
+        $actions = [];
+        for ($i = 0; $i < $actionsCount; ++$i) {
             // id выполняемых действий?
-            $this->int32();
+            $actions[ $i ] = [
+                'type' => $this->int32()
+            ];
             $this->assertEquals($i + 1, $this->int32());
         }
-        $scriptsLen = strrpos($this->hexaheaduntileof(), '02 00 00 00 00 00 00 00 07 00 00 00')/3;
-        $this->mis->binaryScripts = $this->file->hexread($scriptsLen);
-        // here is also, but unable find start backward
-        // $this->scriptsSwitchsAndPings();
-        return;
-        for ($i = 0; $i < $scriptsCount; ++$i) {
-            $this->nextEqualHex('00');
-        }
-        $blockCount = $this->int32();
-        for ($i = 0; $i < $blockCount; ++$i) {
-            $this->unknownBlock(9); // триггеры
+        for ($i = 0; $i < $actionsCount; ++$i) {
+            switch ($actions[ $i ]['type']) {
+                case 2000: // dummy action
+                    $this->nextEqualHex('00');
+                    //~ $scriptsLen = strrpos($this->hexaheaduntileof(), '02 00 00 00 00 00 00 00 07 00 00 00')/3;
+                    //~ $this->mis->binaryScripts = $this->file->hexread($scriptsLen);
+                    //~ return;
+                    break;
+                case 2016: // ping start
+                    $this->nextEqualHex('00');
+                    $targetPingId = $this->int32();
+                    $pointx = $this->float();
+                    $pointy = $this->float();
+                    $colorR = $this->int8();
+                    $colorG = $this->int8();
+                    $colorB = $this->int8();
+                    $this->nextEqualHex('ff');
+                    break;
+                case 2017: // stop ping
+                    $this->nextEqualHex('00');
+                    $targetPingId = $this->int32();
+                    break;
+                case 2050: // usable object
+                    $this->nextEqualHex('00');
+                    $objectId = $this->int32();
+                    $isUsable = $this->int8();
+                    $this->assertEquals(true, $isUsable == 0 or $isUsable == 1);
+                    break;
+                case 2055: // cancel actual countdown
+                    // no any data!
+                    break;
+                case 2047: // vehicle all out
+                    $this->nextEqualHex('00');
+                    $objectId = $this->int32();
+                    break;
+                case 2044: // attack target
+                    $this->nextEqualHex('00');
+                    // TODO: who attack and target
+                    $objectId1 = $this->int32();
+                    $objectId2 = $this->int32();
+                    break;
+                case 2004: // set energystat (destroy/repair)
+                    $this->nextEqualHex('00');
+                    $newEnergy = $this->float();
+                    $objectsCount = $this->int32();
+                    for ($objI = 0; $objI < $objectsCount; ++$objI) {
+                        $this->int32();
+                    }
+                    break;
+                case 2013: // fadescreenin
+                case 2014: // fadescreenout
+                    $this->nextEqualHex('00 e8 03 00 00');
+                    break;
+                case 2007: // misextro
+                    $this->nextEqualHex('00');
+                    $misExtroId = $this->int32();
+                    break;
+                case 2002: // mis win/fail
+                    $this->nextEqualHex('00');
+                    $isWin = $this->int32();
+                    $this->assertEquals(true, $isWin == 0 or $isWin == 1);
+                    break;
+                case 2005: // nextmis path
+                    $this->nextEqualHex('00');
+                    $nextMisPath = $this->text();
+                    break;
+                case 2003: // output text
+                    $this->nextEqualHex('00 ff ff ff ff ff ff ff ff 10 27 00 00 ff ff ff ff');
+                    $showText = $this->text();
+                    $this->nextEqualHex('00 00');
+                    break;
+                case 2028: // patrol
+                    $this->nextEqualHex('00');
+                    $objectsCount = $this->int32();
+                    for ($objI = 0; $objI < $objectsCount; ++$objI) {
+                        $this->int32();
+                    }
+                    $pathPointsCount = $this->int32();
+                    for ($p = 0; $p < $pathPointsCount; ++$p) {
+                        $this->float();
+                        $this->float();
+                        $this->nextEqualHex('00 00 00 00');
+                    }
+                    $isLoop = $this->int8();
+                    $this->assertEquals(true, $isLoop == 0 or $isLoop == 1);
+                    $this->nextEqualHex('00 00 00 00');
+                    break;
+                case 2031: // start timer
+                    $this->nextEqualHex('00');
+                    $isVisibleCountdown = $this->int8();
+                    $timerId = $this->int32();
+                    $this->assertEquals(true, $isVisibleCountdown == 0 or $isVisibleCountdown == 1);
+                    break;
+                case 2009: // change status (active/inactive object)
+                    $this->nextEqualHex('00');
+                    $objectsCount = $this->int32();
+                    for ($objI = 0; $objI < $objectsCount; ++$objI) {
+                        $this->int32();
+                    }
+                    $isActive = $this->int32();
+                    $this->assertEquals(true, $isActive == 0 or $isActive == 1);
+                    break;
+                case 2015: // change switch
+                    $this->nextEqualHex('00');
+                    $switchId = $this->int32();
+                    $isDisabled = $this->int32();
+                    $this->assertEquals(true, $isDisabled == 0 or $isDisabled == 1);
+                    break;
+                case 2036: // change unit behavior
+                    $this->nextEqualHex('00');
+                    // как-то сюда утрамбован on/off/hold
+                    $bitmask1 = $this->int8();
+                    $bitmask2 = $this->int8();
+                    $objectId = $this->int32();
+                    break;
+                case 2010: // remove object
+                    $this->nextEqualHex('00');
+                    $objectsCount = $this->int32();
+                    for ($objI = 0; $objI < $objectsCount; ++$objI) {
+                        $this->int32();
+                    }
+                    break;
+                case 2023: // add_interchange
+                    $this->nextEqualHex('00 01 00 00 00 00 00 00 00 01 00 00 00');
+                    break;
+                default:
+                    $scriptsLen = strrpos($this->hexaheaduntileof(), '02 00 00 00 00 00 00 00 07 00 00 00')/3;
+                    $this->mis->binaryScripts = $this->file->hexread($scriptsLen);
+                    throw new NotImplement('unknown script action ' . $actions[ $i ]['type']);
+            }
         }
 
-        $this->nextEqualHex('00 00 00 00 01 00 00 00 01 00 00 00 01 00 00 00');
+        $triggers = [];
+        $triggersCount = $this->int32();
+        for ($i = 0; $i < $triggersCount; ++$i) {
+            $type = $this->int32(); // type
+            $id = $this->int32(); // id?
+            $triggers[ $id ] = [
+                'type' => $type,
+            ];
+            $this->nextEqualHex('01', '00');
+        }
+        $this->assertEquals($triggersCount, count($triggers));
 
-        //~ $this->unknownBlock(24 + 36 * ($scriptsCount-1));
-        $this->unknownBlock(56);
-        $nameBlockCount = $this->int32();
-        for ($i = 0; $i < $nameBlockCount; ++$i) {
+        if ($triggersCount) {
+            $this->nextEqualHex('00 00 00 00');
+        } else {
             $this->nextEqualHex('01 00 00 00');
-            $this->unknownBlock(4);
-            $this->nextEqualHex('01 00 00 00 d0 07 00 00 01 00 00 00 00 00 00 00');
+        }
+
+        //~ $scriptsLen = strrpos($this->hexaheaduntileof(), '02 00 00 00 00 00 00 00 07 00 00 00')/3;
+        //~ $this->mis->binaryScripts = $this->file->hexread($scriptsLen);
+        //~ return;
+        echo $this->file->hexread(108+80),PHP_EOL;
+        /*
+        scriptx3.mis
+        01 00 00 00 01 00 00 00 01 00 00 00 02 00 00 00 01 00 00 00 00 00 00 00 00 00 00 00 00 00 01 00 00 00 00 00 
+        01 00 00 00 02 00 00 00 01 00 00 00 04 00 00 00 01 00 00 00 00 00 00 00 00 00 00 00 00 00 01 00 00 00 00 00 
+        01 00 00 00 03 00 00 00 01 00 00 00 06 00 00 00 01 00 00 00 00 00 00 00 00 00 00 00 00 00 01 00 01 00 00 00
+        scriptx3_mission_start.mis
+        01 00 00 00 01 00 00 00 01 00 00 00 07 00 00 00 01 00 00 00 00 00 
+        01 00 00 00 02 00 00 00 01 00 00 00 08 00 00 00 01 00 00 00 00 00 
+        01 00 00 00 03 00 00 00 01 00 00 00 09 00 00 00 01 00 00 00 00 00 
+                                                                          00 00 00 00 00 00 00 00 01 00 00 00 00 00 
+                                                                          00 00 00 00 00 00 00 00 01 00 00 00 00 00 
+                                                                          00 00 00 00 00 00 00 00 01 00 01 00 00 00
+        wtf? */
+
+        $foundTriggers = 0;
+        while ($foundTriggers < $triggersCount) {
+            $foundTriggers++; // каждый скрипт всегда неявно включает пустой триггер
+            $actionsCount = $this->int32();
+            for ($a = 0;  $a < $actionsCount; ++$a) {
+                $this->int32(); // числительное
+            }
+            $scriptTriggerIds = [];
+            $scriptTriggersCount = $this->int32();
+            $foundTriggers += $scriptTriggersCount;
+            for ($t = 0;  $t < $scriptTriggersCount; ++$t) {
+                $scriptTriggerIds[] = $this->int32();
+            }
+            $repeatMarker = $this->int8(); // исполнять скрипт постоянно (0) или только однократно (1)
+            if ($repeatMarker != 1 and $repeatMarker != 0) {
+                throw new ParserError('script repeat marker must be 0 or 1, given '.$repeatMarker);
+            }
+            $this->nextEqualHex('00 00 00 00 00');
+            //for ($t = 0; $t < $scriptTriggersCount; ++$t) {
+            foreach ($scriptTriggerIds as $id) {
+                $this->nextEqualHex('00 00 00 00 00 00 00 00');
+                $this->int8();
+                $this->nextEqualHex('00');
+                if (! isset($triggers[ $id ])) {
+                    throw new ParserError('undefined script id '.$id);
+                }
+                switch ($triggers[ $id ]['type']) {
+                    case 1000: // empty
+                    case 1005: // mission start
+                        break;
+                    case 1001: // chance
+                        $chanceInterval = $this->int32(); // в каких попугаях? мс?
+                        $chance = $this->float();
+                        $this->nextEqualHex('00 00 00 00');
+                        break;
+                    case 1003: // timeout
+                        $this->nextEqualHex('00 00 00 00 00 00 00 00 ff ff ff ff');
+                        break;
+                    case 1004: // switch on/off
+                        $switchId = $this->int32();
+                        $switchNewState = $this->int32();
+                        $this->assertEquals(true, $switchNewState == 0 or $switchNewState == 1);
+                        break;
+                    case 1007: // mission win/fail
+                        $isMissionWin = $this->int32();
+                        $this->assertEquals(true, $isMissionWin == 0 or $isMissionWin == 1);
+                        break;
+                    case 1006: // party statistic
+                        $partyId = $this->int32();
+                        $partyPolicy = $this->int32(); // 0 - units count, 1 - percent, 2 - alive only knights
+                        $partyValue = $this->float(); // TODO: recheck is float with units count
+                        break;
+                    case 1010: // unitownedby
+                        // объект и группа
+                        $this->int32();
+                        $this->int32();
+                        break;
+                    case 1017: // enemy spotted
+                        $this->unknownBlock(9);
+                        break;
+                    case 1030: // obj used
+                        $objId = $this->int32();
+                        $this->nextEqualHex('ff ff ff ff 00 00');
+                        break;
+                    case 1002: // region entered
+                        //echo $this->file->hexahead(min(500, $this->file->getMaxPosition() - $this->file->getPosition()));
+                        $regionId = $this->int32();
+                        $this->nextEqualHex('00 00 80 bf'); // (float) -1.0
+                        $regionObjCount = $this->int32();
+                        for ($regionObjI = 0; $regionObjI < $regionObjCount; ++$regionObjI) {
+                            $this->int32();
+                        }
+                        $this->nextEqualHex('00 00 00 00 00 00 00 00 00 00 00 00 ff ff ff ff');
+                        break;
+                    case 1008: // energystate
+                        $energyValue = $this->float();
+                        $this->nextEqualHex('00');
+                        $energyObjCount = $this->int32();
+                        for ($energyObjI = 0; $energyObjI < $energyObjCount; ++$energyObjI) {
+                            $this->int32();
+                        }
+                        $triggerEnergyLogic = $this->int8(); // 1 and logic, 0 or logic
+                        $this->assertEquals(true, $triggerEnergyLogic == 0 or $triggerEnergyLogic == 1);
+                        break;
+                    default:
+                        //echo $this->file->hexahead(min(200, $this->file->getMaxPosition() - $this->file->getPosition()));
+                        throw new NotImplement('unknown script data '.$triggers[ $id ]['type']);
+                }
+                $logicMarker = $this->int32(); // маркер and/or/and not логики триггеров, int32 1/2/4 соответственно.
+            }
+        }
+
+        $namedScriptsCount = $this->int32();
+        for ($i = 0; $i < $namedScriptsCount; ++$i) {
+            $triggersCount = $this->int32();
+            for ($t = 0;  $t < $triggersCount; ++$t) {
+                $this->int32();
+            }
+            $actionsCount = $this->int32();
+            for ($a = 0;  $a < $actionsCount; ++$a) {
+                $this->int32();
+            }
+            $triggersOpsCount = $this->int32();
+            for ($t = 0;  $t < $triggersOpsCount; ++$t) {
+                // маркер and/or/and not логики триггеров, int32 1/2/4 соответственно.
+                // 0 возможно означает "не используется" для первого триггера
+                $this->int32();
+            }
             $this->text();
         }
-        $unknownBlockLen = $this->int32();
-        for ($i = 0; $i < $unknownBlockLen; ++$i) {
-            $this->unknownBlock(20);
+
+        // похоже, контрольный блок, повторяющий описания выше
+        $lastScriptBlockCount = $this->int32();
+        for ($i = 0; $i < $lastScriptBlockCount; ++$i) {
+            // 01 00 00 00 01 00 00 00 02 00 00 00 01 00 00 00 01 00 00 00
+            $this->int32();
+            $counterAct = $this->int32();
+            for ($a = 0; $a < $counterAct; ++$a) {
+                $this->int32(); // скорей всего id счётчика
+            }
+            $counterTrg = $this->int32();
+            for ($a = 0; $a < $counterTrg; ++$a) {
+                $this->int32();
+            }
         }
+
+        $this->scriptsSwitchsAndPings();
     }
 
     protected function endArea()

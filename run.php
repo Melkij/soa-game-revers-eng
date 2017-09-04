@@ -17,14 +17,9 @@ foreach (glob('testmis/*.mis') as $file) {
     } catch (NotImplement $e) {
         $notimplement[] = basename($file);
         continue;
-    } catch (ParserError $e) {
-        if ($e->getMessage() == 'not implement') {
-            $notimplement[] = basename($file);
-            continue;
-        } else {
-            $failed[] = basename($file);
-            echo basename($file) . ' ParserError: ' . $e,PHP_EOL;
-        }
+    } catch (\Exception $e) {
+        $failed[] = basename($file);
+        echo basename($file) . ' ParserError: ' . $e,PHP_EOL;
     }
 }
 foreach (glob('trs/*.trs') as $file) {
