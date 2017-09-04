@@ -1002,7 +1002,7 @@ class normal extends base
         //~ $scriptsLen = strrpos($this->hexaheaduntileof(), '02 00 00 00 00 00 00 00 07 00 00 00')/3;
         //~ $this->mis->binaryScripts = $this->file->hexread($scriptsLen);
         //~ return;
-        echo $this->file->hexread(108+80),PHP_EOL;
+        //echo $this->file->hexread(108+80),PHP_EOL;
         /*
         scriptx3.mis
         01 00 00 00 01 00 00 00 01 00 00 00 02 00 00 00 01 00 00 00 00 00 00 00 00 00 00 00 00 00 01 00 00 00 00 00 
