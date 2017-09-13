@@ -779,6 +779,7 @@ class normal extends base
     private function scriptsSwitchsAndPings()
     {
         $nextSwitch = $this->nextEqualHex('00 00 00 00', '07 00 00 00');
+
         $switchCount = $this->int32();
         for ($i = 0; $i < $switchCount; ++$i) {
             $this->int32();
@@ -791,7 +792,8 @@ class normal extends base
             $this->int32();
             $this->text();
         }
-        $nextBlock = $this->nextEqualHex('64 00 00 00', '65 00 00 00', '81 00 00 00');
+
+        $nextSwitchId = $this->int32();
         $switchStatusCount = $this->int32();
         $this->assertEquals($switchCount, $switchStatusCount);
         for ($i = 0; $i < $switchStatusCount; ++$i) {
@@ -823,7 +825,8 @@ class normal extends base
         for ($i = 0; $i < $timersCount; ++$i) {
             $timer = $this->mis->addScriptTimer();
             $timer->id = $this->int32();
-            $timer->unknown = $this->unknownBlock(10);
+            $timer->unknown = $this->unknownBlock(5);
+            $this->nextEqualHex('00 00 00 00 00');
             $timer->name = $this->text();
             $this->nextEqualHex('00 00 00 00');
         }
@@ -833,29 +836,21 @@ class normal extends base
 
     protected function scripts()
     {
-        $actionsCount = $this->int32();
-
-        //~ if (! $actionsCount) {
-            //~ $this->nextEqualHex('00 00 00 00 01 00 00 00 00 00 00 00 00 00 00 00');
-            //~ $this->scriptsSwitchsAndPings();
-            //~ return;
-        //~ }
-
         $actions = [];
+        $actionsCount = $this->int32();
         for ($i = 0; $i < $actionsCount; ++$i) {
+            $type = $this->int32();
+            $id = $this->int32();
             // id выполняемых действий?
             $actions[ $i ] = [
-                'type' => $this->int32()
+                'id' => $id,
+                'type' => $type,
             ];
-            $this->assertEquals($i + 1, $this->int32());
         }
         for ($i = 0; $i < $actionsCount; ++$i) {
             switch ($actions[ $i ]['type']) {
                 case 2000: // dummy action
                     $this->nextEqualHex('00');
-                    //~ $scriptsLen = strrpos($this->hexaheaduntileof(), '02 00 00 00 00 00 00 00 07 00 00 00')/3;
-                    //~ $this->mis->binaryScripts = $this->file->hexread($scriptsLen);
-                    //~ return;
                     break;
                 case 2016: // ping start
                     $this->nextEqualHex('00');
@@ -959,9 +954,10 @@ class normal extends base
                     break;
                 case 2036: // change unit behavior
                     $this->nextEqualHex('00');
-                    // как-то сюда утрамбован on/off/hold
-                    $bitmask1 = $this->int8();
-                    $bitmask2 = $this->int8();
+                    $newBehavior = $this->mapObjectActiveAiSetup($this->int8());
+                    $isBehaviorHold = $this->mapObjectActiveAiSetup($this->int8());
+                    // если флаг в isBehaviorHold = true, то это поведение hold
+                    // если false - то поведение меняется на соответствующий newBehavior
                     $objectId = $this->int32();
                     break;
                 case 2010: // remove object
@@ -972,11 +968,19 @@ class normal extends base
                     }
                     break;
                 case 2023: // add_interchange
+                    // todo
                     $this->nextEqualHex('00 01 00 00 00 00 00 00 00 01 00 00 00');
+                    break;
+                case 2012:
+                case 2025:
+                case 2037:
+                case 2027:
+                case 2051:
                     break;
                 default:
                     $scriptsLen = strrpos($this->hexaheaduntileof(), '02 00 00 00 00 00 00 00 07 00 00 00')/3;
                     $this->mis->binaryScripts = $this->file->hexread($scriptsLen);
+                    var_dump($this->mis->binaryScripts);
                     throw new NotImplement('unknown script action ' . $actions[ $i ]['type']);
             }
         }
@@ -1002,7 +1006,7 @@ class normal extends base
         //~ $scriptsLen = strrpos($this->hexaheaduntileof(), '02 00 00 00 00 00 00 00 07 00 00 00')/3;
         //~ $this->mis->binaryScripts = $this->file->hexread($scriptsLen);
         //~ return;
-        //echo $this->file->hexread(108+80),PHP_EOL;
+        //echo $this->file->hexahead(108),PHP_EOL;
         /*
         scriptx3.mis
         01 00 00 00 01 00 00 00 01 00 00 00 02 00 00 00 01 00 00 00 00 00 00 00 00 00 00 00 00 00 01 00 00 00 00 00 
@@ -1079,10 +1083,13 @@ class normal extends base
                         break;
                     case 1030: // obj used
                         $objId = $this->int32();
-                        $actorId = $this->int32();
-                        $isUsedOnlyByActor = $this->int8();
-                        $this->assertEquals(true, $isUsedOnlyByActor == 0 or $isUsedOnlyByActor == 1);
-                        $this->nextEqualHex('00');
+                        if ($this->file->hexahead(4) == 'ff ff ff ff') {
+                            $actorId = null;
+                            $this->nextEqualHex('ff ff ff ff 00 00');
+                        } else {
+                            $actorId = $this->int32();
+                            $this->nextEqualHex('01 00');
+                        }
                         break;
                     case 1002: // region entered
                         //echo $this->file->hexahead(min(500, $this->file->getMaxPosition() - $this->file->getPosition()));
