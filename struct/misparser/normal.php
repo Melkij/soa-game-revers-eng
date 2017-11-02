@@ -304,6 +304,8 @@ class normal extends base
                 $this->objectHeaderBlock2($obj);
 
                 $object = $this->concreteObjectParser($obj);
+                $object->binaryPosStart = $startPos;
+                $object->binaryPosEnd = $this->file->getPosition();
             } catch (\Exception $e) {
                 echo 'obj '.$i.' of '.$objectsCount,PHP_EOL;
                 echo $this->file->hexahead(20),PHP_EOL;

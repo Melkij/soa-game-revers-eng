@@ -11,6 +11,9 @@ use struct\mission\objects\znrMine;
 
 class mapobject
 {
+    public $binaryPosStart = null;
+    public $binaryPosEnd = null;
+
     public $type;
     public $mapuid;
     public $posX;
