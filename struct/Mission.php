@@ -149,6 +149,10 @@ class Mission
     {
         return $this->regions;
     }
+    public function getTextures()
+    {
+        return $this->textures;
+    }
 
     public function __set($name, $value)
     {
