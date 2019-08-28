@@ -18,6 +18,7 @@ class mapobject
     public $mapuid;
     public $posX;
     public $posY;
+    public $posZ;
     public $rotate;
     public $scale;
     public $maxHealth;
@@ -25,7 +26,6 @@ class mapobject
     public $maxArmor;
     public $currentArmor;
 
-    public $unknown0; // для нормальной карты - только 00 00 00 00 или 00 00 00 80
     public $unknown1;
     public $unknown2;
     public $unknown3;

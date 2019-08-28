@@ -253,8 +253,8 @@ class normal extends base
         $this->nextEqualHex('05 00 00 00');
 
         $this->mis->skyId = $this->int32();
-        $this->nextEqualHex('00 00 00 00');
-        //$this->mis->unknownBlockAfterSky = $this->unknownBlock(4);
+        //~ $this->nextEqualHex('00 00 00 00');
+        $this->mis->unknownBlockAfterSky = $this->unknownBlock(4);
         $this->mis->rainPercent = $this->float();
         $this->mis->temperature = $this->float();
         $this->mis->unknownBlockAfterTemperature = $this->unknownBlock(1);
@@ -290,7 +290,7 @@ class normal extends base
                 $obj->mapuid = $this->int32();
                 $obj->posX = $this->float();
                 $obj->posY = $this->float();
-                $obj->unknown0 = $this->unknownBlock(4);
+                $obj->posZ = $this->float();
                 $obj->rotate = $this->float();
                 $obj->scale = $this->float(); // размер камней, деревьев. 1 для всех остальных
                 $this->objectHeaderBlock1($obj);

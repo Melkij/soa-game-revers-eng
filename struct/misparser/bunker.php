@@ -142,7 +142,7 @@ class bunker extends normal
             $this->nextEqualHex('00 00 00 00 00');
         }
 
-        if ($obj->unknown0 === '00 00 00 00') {
+        if ($obj->posZ === 0.0) {
             $this->nextEqualHex('00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 f0 55 00 00 0a d7 23 3c 40 08 f4 34 00 00 00 00 01 00');
             $obj->unknownVehicle6 = $this->unknownblock(13);
             $this->nextEqualHex('00 00 80 3f f0 55 00 00 0a d7 23 3c 40 08 f4 34 00 00 00 00 00 00 00 00 00 00 40 42 0f 00 00 00 00 00 00 00 00 80 40 00 00 00 00');
